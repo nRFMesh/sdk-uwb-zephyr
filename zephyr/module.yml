@@ -1,6 +1,3 @@
 build:
   cmake: .
-  kconfig: Kconfig.hsm
-  settings:
-    board_root: .
-    dts_root: .
+  kconfig: Kconfig.uwb
