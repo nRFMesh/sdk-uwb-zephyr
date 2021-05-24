@@ -1,0 +1,11 @@
+menuconfig SENSOR
+	bool "Sensor Drivers"
+	help
+		Include sensor drivers in config
+
+if SENSOR
+
+rsource "veml6030/Kconfig"
+rsource "ms8607/Kconfig"
+
+endif # SENSOR

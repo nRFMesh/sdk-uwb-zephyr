@@ -1,0 +1,36 @@
+manifest:
+  version: 0.9
+  remotes:
+    # Home Smart Mesh GitHub organization.
+    - name: uwb
+      url-base: https://github.com/nRFMesh
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+
+  defaults:
+    remote: uwb
+
+  projects:
+    - name: zephyr
+      repo-path: zephyr
+      remote: zephyrproject
+      revision: 41e885947e4f48aae0866df9e5fee657afb7c1cc
+      import:
+        name-whitelist:
+          - cmsis
+          - edtt
+          - fatfs
+          - hal_nordic
+          - libmetal
+          - littlefs
+          - lvgl
+          - mbedtls
+          - mcumgr
+          - mipi-sys-t
+          - net-tools
+          - nrf_hw_models
+          - openthread
+          - segger
+
+  self:
+    path: uwb

@@ -1,0 +1,7 @@
+menu "Device Drivers"
+
+rsource "sensor/Kconfig"
+
+rsource "battery/Kconfig"
+
+endmenu
