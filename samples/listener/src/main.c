@@ -61,14 +61,6 @@ static uint32 status_reg = 0;
 */
 static uint16 frame_len = 0;
 
-void configure_code(uint8_t rx_code)
-{
-    config.rxCode = rx_code;
-    dwt_configure(&config);
-    printf("\r\nconfigured : chan %u, rxCode %u, nsSFD %u\r\n",
-                config.chan, config.rxCode, config.nsSFD);
-}
-
 void sniff_ms(int time)
 {
     int start = k_uptime_get();
@@ -106,8 +98,9 @@ void sniff_ms(int time)
 
 }
 
-int dw_main(void)
+void main_thread(void * id, void * unused1, void * unused2)
 {
+    printk("%s\n", __func__);
     printk(APP_NAME);
     openspi();
 
@@ -132,20 +125,6 @@ int dw_main(void)
     while (1) {
         sniff_ms(10000);
     }
-}
-
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*---------------------------------------------------------------------------*/
-void main_thread(void * id, void * unused1, void * unused2)
-{
-    printk("%s\n", __func__);
-
-    k_sleep( K_MSEC(1000));
-
-	dw_main();
-
-	while(1) { /* spin */}
 }
 
 K_THREAD_DEFINE(main_id, STACKSIZE, main_thread, 

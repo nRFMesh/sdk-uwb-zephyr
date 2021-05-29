@@ -132,18 +132,10 @@ typedef enum
 
 #define S1_SWITCH_ON  (1)
 #define S1_SWITCH_OFF (0)
-//when switch (S1) is 'on' the pin is low
-int port_is_switch_on(uint16_t GPIOpin);
-int port_is_boot1_low(void);
+
 
 void port_set_dw1000_slowrate(void);
 void port_set_dw1000_fastrate(void);
-
-void process_dwRSTn_irq(void);
-
-void setup_DW1000RSTnIRQ(int enable);
-
-extern uint32_t     HAL_GetTick(void);
 
 #ifdef __cplusplus
 }
