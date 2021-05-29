@@ -111,8 +111,6 @@ int dw_main(void)
     printk(APP_NAME);
     openspi();
 
-    reset_DW1000(); 
-
     port_set_dw1000_slowrate();
 
     if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR) {

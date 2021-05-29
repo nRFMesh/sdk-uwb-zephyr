@@ -130,38 +130,19 @@ typedef enum
  *
  *******************************************************************************/
 
-void Sleep(uint32_t Delay);
-unsigned long portGetTickCnt(void);
-
 #define S1_SWITCH_ON  (1)
 #define S1_SWITCH_OFF (0)
 //when switch (S1) is 'on' the pin is low
 int port_is_switch_on(uint16_t GPIOpin);
 int port_is_boot1_low(void);
 
-void port_wakeup_dw1000(void);
-void port_wakeup_dw1000_fast(void);
-
 void port_set_dw1000_slowrate(void);
 void port_set_dw1000_fastrate(void);
 
 void process_dwRSTn_irq(void);
-void process_deca_irq(void);
-
-void led_on(led_t led);
-void led_off(led_t led);
-
-int  peripherals_init(void);
-void spi_peripheral_init(void);
 
 void setup_DW1000RSTnIRQ(int enable);
 
-void reset_DW1000(void);
-
-uint32_t port_GetEXT_IRQStatus(void);
-uint32_t port_CheckEXT_IRQ(void);
-void port_DisableEXT_IRQ(void);
-void port_EnableEXT_IRQ(void);
 extern uint32_t     HAL_GetTick(void);
 
 #ifdef __cplusplus
