@@ -1,0 +1,4 @@
+menuconfig DW1000
+	bool "DW1000 Tranceiver"
+	help
+		Include DW1000 Tranceiver drivers in config

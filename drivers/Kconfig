@@ -4,4 +4,6 @@ rsource "sensor/Kconfig"
 
 rsource "battery/Kconfig"
 
+rsource "dw1000/Kconfig"
+
 endmenu
