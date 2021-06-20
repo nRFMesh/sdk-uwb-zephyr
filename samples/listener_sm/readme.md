@@ -14,3 +14,15 @@ west flash
 west flash --snr 760130125
 west flash --snr 760130128
 ```
+
+## uwb json config
+sm/E2F96EB1D7A476CC{"dwt_config":{"chan":5}}
+
+`sm/E2F96EB1D7A476CC`
+```json
+{
+    "dwt_config":{
+        "chan":4
+    }
+}
+```
