@@ -52,6 +52,10 @@
 // zephyr includes
 #include <zephyr.h>
 #include <sys/printk.h>
+#include <list>
+#include <map>
+#include <json.hpp>
+using json = nlohmann::json;
 
 #define LOG_LEVEL 3
 #include <logging/log.h>
@@ -158,16 +162,75 @@ static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 
 #define STACKSIZE 2048
 
+std::map<unsigned long,std::string> map_reg_status {
+	{SYS_STATUS_IRQS,	   	"Interrupt Request Status READ ONLY"},
+	{SYS_STATUS_CPLOCK,	   	"Clock PLL Lock"},
+	{SYS_STATUS_ESYNCR,	   	"External Sync Clock Reset"},
+	{SYS_STATUS_AAT,	   	"Automatic Acknowledge Trigger"},
+	{SYS_STATUS_TXFRB,	   	"Transmit Frame Begins"},
+	{SYS_STATUS_TXPRS,	   	"Transmit Preamble Sent"},
+	{SYS_STATUS_TXPHS,	   	"Transmit PHY Header Sent"},
+	{SYS_STATUS_TXFRS,	   	"Transmit Frame Sent"},
+	{SYS_STATUS_RXPRD,	   	"Receiver Preamble Detected status"},
+	{SYS_STATUS_RXSFDD,	   	"Receiver Start Frame Delimiter Detected."},
+	{SYS_STATUS_LDEDONE,   	"LDE processing done"},
+	{SYS_STATUS_RXPHD,	   	"Receiver PHY Header Detect"},
+	{SYS_STATUS_RXPHE,	   	"Receiver PHY Header Error"},
+	{SYS_STATUS_RXDFR,	   	"Receiver Data Frame Ready"},
+	{SYS_STATUS_RXFCG,	   	"Receiver FCS Good"},
+	{SYS_STATUS_RXFCE,	   	"Receiver FCS Error"},
+	{SYS_STATUS_RXRFSL,	   	"Receiver Reed Solomon Frame Sync Loss"},
+	{SYS_STATUS_RXRFTO,	   	"Receive Frame Wait Timeout"},
+	{SYS_STATUS_LDEERR,	   	"Leading edge detection processing error"},
+	{SYS_STATUS_reserved,  	"bit19 reserved"},
+	{SYS_STATUS_RXOVRR,	   	"Receiver Overrun"},
+	{SYS_STATUS_RXPTO,	   	"Preamble detection timeout"},
+	{SYS_STATUS_GPIOIRQ,	"GPIO interrupt"},
+	{SYS_STATUS_SLP2INIT,	"SLEEP to INIT"},
+	{SYS_STATUS_RFPLL_LL,	"RF PLL Losing Lock"},
+	{SYS_STATUS_CLKPLL_LL,	"Clock PLL Losing Lock"},
+	{SYS_STATUS_RXSFDTO,	"Receive SFD timeout"},
+	{SYS_STATUS_HPDWARN,	"Half Period Delay Warning"},
+	{SYS_STATUS_TXBERR,	   	"Transmit Buffer Error"},
+	{SYS_STATUS_AFFREJ,	   	"Automatic Frame Filtering rejection"},
+	{SYS_STATUS_HSRBP,	   	"Host Side Receive Buffer Pointer"},
+	{SYS_STATUS_ICRBP,	   	"IC side Receive Buffer Pointer READ ONLY"},
+	{SYS_STATUS_RXRSCS,		"Receiver Reed-Solomon Correction Status"},
+	{SYS_STATUS_RXPREJ,		"Receiver Preamble Rejection"},
+	{SYS_STATUS_TXPUTE,		"Transmit power up time error"},
+	{SYS_STATUS_TXERR,       "Transmit Error TXPUTE or HPDWARN"},
+	{SYS_STATUS_ALL_RX_GOOD, "Any RX events"},
+	{SYS_STATUS_ALL_DBLBUFF, "Any double buffer events"},
+	{SYS_STATUS_ALL_RX_ERR,  "Any RX errors"},
+	{SYS_STATUS_ALL_RX_TO,   "User defined RX timeouts"},
+	{SYS_STATUS_ALL_TX,      "Any TX events"}
+	};
+
+json uwb_status_to_json(uint32 status_reg)
+{
+	std::list<std::string> flags;
+	for (auto& [key, value] : map_reg_status) {
+		if(status_reg & key)
+        {
+            flags.push_back(value);
+            printk("%s\n",value.c_str());
+        }
+	}
+	return json(flags);
+}
+
 void initiator_thread();
 K_THREAD_DEFINE(initiator_main, STACKSIZE, initiator_thread, NULL, NULL, NULL, 99, 0, 0);
 
 void initiator_thread(void)
 {
     openspi();
+    k_sleep(K_MSEC(100));//2 would be enough
     port_set_dw1000_slowrate();
 
     LOG_INF("initiator_thread> starting");
-    if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR) {
+    printf("------------------------------------");
+    if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
         LOG_ERR("dwt_initialise failed");
         return;
     }
@@ -307,7 +370,9 @@ void initiator_thread(void)
                     frame_seq_nb++;
                 }
                 else {
-                    printk("error - tx failed: %08lx\n", status_reg);
+                    printk("\e[0;33m error - tx failed : status reg= 0x%08lX\n\e[0m",status_reg);
+                    json jstat = uwb_status_to_json(status_reg);
+                    //printk("%s\n",jstat.dump(1).c_str());
                 }
             }
         }
