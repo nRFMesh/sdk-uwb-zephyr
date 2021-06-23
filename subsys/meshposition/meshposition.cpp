@@ -157,7 +157,7 @@ void mp_start(dwt_config_t &config)
     k_sleep(K_MSEC(2));
     port_set_dw1000_slowrate();
 
-    if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR) {
+    if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
         LOG_ERR("dwt_initialise failed");
         return;
     }
