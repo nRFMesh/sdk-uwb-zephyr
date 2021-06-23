@@ -1,0 +1,8 @@
+menuconfig MESHPOSITION
+	bool "Mesh Positioning Remote call library"
+	default n
+	depends on SIMPLEMESH
+	depends on DW1000
+	depends on CPLUSPLUS
+	help
+	  Enable MESHPOSITION functionality.
