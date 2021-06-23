@@ -1,14 +1,19 @@
 
+#include <zephyr.h>
 #include <meshposition.h>
 #include <string>
 #include <map>
 #include <list>
 
 #include <logging/log.h>
+#include <sys/printk.h>
 
 #include <drivers/dw1000/deca_regs.h>
 #include <drivers/dw1000/deca_spi.h>
 #include <drivers/dw1000/port.h>
+
+#define TX_ANT_DLY 16436
+#define RX_ANT_DLY 16436
 
 LOG_MODULE_REGISTER(meshposition, LOG_LEVEL_INF);
 
@@ -99,13 +104,23 @@ std::string set_from_map_str(uint8_t &key,std::map<uint8_t,std::string> &map)
 	}
 }
 
-json mp_status_to_json(uint32 status_reg)
+json mp_status_to_json(uint32_t status_reg)
 {
 	std::list<std::string> flags;
 	for (auto& [key, value] : map_reg_status) {
 		if(status_reg & key)flags.push_back(value);
 	}
 	return json(flags);
+}
+
+void mp_status_print(uint32_t status_reg)
+{
+	for (auto& [key, value] : map_reg_status) {
+		if(status_reg & key)
+        {
+            printk("%s\n",value.c_str());
+        }
+	}
 }
 
 void mp_conf_to_json(dwt_config_t &conf,json &jconf)
@@ -139,6 +154,7 @@ void mp_json_to_conf(json &jconf,dwt_config_t &conf)
 void mp_start(dwt_config_t &config)
 {
     openspi();
+    k_sleep(K_MSEC(2));
     port_set_dw1000_slowrate();
 
     if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR) {
@@ -148,9 +164,63 @@ void mp_start(dwt_config_t &config)
     port_set_dw1000_fastrate();
 
     dwt_configure(&config);
+    dwt_setrxantennadelay(RX_ANT_DLY);
+    dwt_settxantennadelay(TX_ANT_DLY);
+
 	inverse_map(map_txPreambLength,invmap_txPreambLength);
 	inverse_map(map_rxPAC,invmap_rxPAC);
 	inverse_map(map_txPreambLength,invmap_dataRate);
 
     dwt_setleds(1);
+}
+
+
+/*! --------------------------------------------------------------------------
+ * @fn get_tx_timestamp_u64()
+ *
+ * @brief Get the TX time-stamp in a 64-bit variable.
+ *        /!\ This function assumes that length of time-stamps is 40 bits, 
+ *            for both TX and RX!
+ *
+ * @param  none
+ *
+ * @return  64-bit value of the read time-stamp.
+ */
+uint64_t get_tx_timestamp_u64(void)
+{
+    uint8_t ts_tab[5];
+    uint64_t ts = 0;
+    int i;
+
+    dwt_readtxtimestamp(ts_tab);
+    for (i = 4; i >= 0; i--) {
+        ts <<= 8;
+        ts |= ts_tab[i];
+    }
+    return ts;
+}
+
+/*! --------------------------------------------------------------------------
+ * @fn get_rx_timestamp_u64()
+ *
+ * @brief Get the RX time-stamp in a 64-bit variable.
+ *        /!\ This function assumes that length of time-stamps is 40 bits,
+ *        for both TX and RX!
+ *
+ * @param  none
+ *
+ * @return  64-bit value of the read time-stamp.
+ */
+uint64_t get_rx_timestamp_u64(void)
+{
+    uint8_t ts_tab[5];
+    uint64_t ts = 0;
+    int i;
+
+    dwt_readrxtimestamp(ts_tab);
+    for (i = 4; i >= 0; i--) {
+        ts <<= 8;
+        ts |= ts_tab[i];
+    }
+    return ts;
 }

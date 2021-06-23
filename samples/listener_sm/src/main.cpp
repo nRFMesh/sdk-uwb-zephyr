@@ -91,10 +91,7 @@ void sniff_ms(int time)
     printf("sniff> start(%d) -> finish(%d)\n",start,finish);
 
     while (k_uptime_get() < finish) {
-        for (int i = 0 ; i < FRAME_LEN_MAX; i++ )
-        {
-            rx_buffer[i] = 0;
-        }
+		memset(rx_buffer,0,FRAME_LEN_MAX);
         dwt_rxenable(DWT_START_RX_IMMEDIATE);
         while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & 
                  (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_ERR))) { /* spin */ };

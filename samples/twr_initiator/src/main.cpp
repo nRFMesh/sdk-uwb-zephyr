@@ -20,7 +20,7 @@
  * 
  */
 
-#include <string.h>
+#include <meshposition.h>
 
 #include <drivers/dw1000/deca_device_api.h>
 #include <drivers/dw1000/deca_regs.h>
@@ -30,6 +30,7 @@
 // zephyr includes
 #include <zephyr.h>
 #include <sys/printk.h>
+#include <string>
 #include <list>
 #include <map>
 #include <json.hpp>
@@ -64,14 +65,12 @@ static dwt_config_t config = {
                         Used in RX only. */           
 };
 
-/* Default antenna delay values for 64 MHz PRF. See NOTE 1 below. */
-#define TX_ANT_DLY 16436
-#define RX_ANT_DLY 16436
-
 /* Frames used in the ranging process. See NOTE 2 below. */
-static uint8 tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
-static uint8 rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
-static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E',0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
+static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
+static uint8_t tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E',0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+#define TX_ANT_DLY 16436
 
 /* Length of the common part of the message (up to and including the 
  * function code, see NOTE 2 below). 
@@ -84,11 +83,11 @@ static uint8 tx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E',0x2
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
 #define FINAL_MSG_TS_LEN 4
 /* Frame sequence number, incremented after each transmission. */
-static uint8 frame_seq_nb = 0;
+static uint8_t frame_seq_nb = 0;
 
 #define RX_BUF_LEN 20
-static uint8 rx_buffer[RX_BUF_LEN];
-static uint32 status_reg = 0;
+static uint8_t rx_buffer[RX_BUF_LEN];
+static uint32_t status_reg = 0;
 
 /* UWB microsecond (uus) to device time unit (dtu, around 15.65 ps) 
  * conversion factor.
@@ -116,100 +115,28 @@ static uint32 status_reg = 0;
 
 /* Time-stamps of frames transmission/reception, expressed in device time units.
  * As they are 40-bit wide, we need to define a 64-bit int type to handle them. */
-typedef unsigned long long uint64;
-static uint64 poll_tx_ts;
-static uint64 resp_rx_ts;
-static uint64 final_tx_ts;
+typedef unsigned long long uint64_t;
+static uint64_t poll_tx_ts;
+static uint64_t resp_rx_ts;
+static uint64_t final_tx_ts;
 
 /* Declaration of static functions. */
-static uint64 get_tx_timestamp_u64(void);
-static uint64 get_rx_timestamp_u64(void);
-static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
+static void final_msg_set_ts(uint8_t *ts_field, uint64_t ts);
 
 #define STACKSIZE 2048
-
-std::map<unsigned long,std::string> map_reg_status {
-	{SYS_STATUS_IRQS,	   	"Interrupt Request Status READ ONLY"},
-	{SYS_STATUS_CPLOCK,	   	"Clock PLL Lock"},
-	{SYS_STATUS_ESYNCR,	   	"External Sync Clock Reset"},
-	{SYS_STATUS_AAT,	   	"Automatic Acknowledge Trigger"},
-	{SYS_STATUS_TXFRB,	   	"Transmit Frame Begins"},
-	{SYS_STATUS_TXPRS,	   	"Transmit Preamble Sent"},
-	{SYS_STATUS_TXPHS,	   	"Transmit PHY Header Sent"},
-	{SYS_STATUS_TXFRS,	   	"Transmit Frame Sent"},
-	{SYS_STATUS_RXPRD,	   	"Receiver Preamble Detected status"},
-	{SYS_STATUS_RXSFDD,	   	"Receiver Start Frame Delimiter Detected."},
-	{SYS_STATUS_LDEDONE,   	"LDE processing done"},
-	{SYS_STATUS_RXPHD,	   	"Receiver PHY Header Detect"},
-	{SYS_STATUS_RXPHE,	   	"Receiver PHY Header Error"},
-	{SYS_STATUS_RXDFR,	   	"Receiver Data Frame Ready"},
-	{SYS_STATUS_RXFCG,	   	"Receiver FCS Good"},
-	{SYS_STATUS_RXFCE,	   	"Receiver FCS Error"},
-	{SYS_STATUS_RXRFSL,	   	"Receiver Reed Solomon Frame Sync Loss"},
-	{SYS_STATUS_RXRFTO,	   	"Receive Frame Wait Timeout"},
-	{SYS_STATUS_LDEERR,	   	"Leading edge detection processing error"},
-	{SYS_STATUS_reserved,  	"bit19 reserved"},
-	{SYS_STATUS_RXOVRR,	   	"Receiver Overrun"},
-	{SYS_STATUS_RXPTO,	   	"Preamble detection timeout"},
-	{SYS_STATUS_GPIOIRQ,	"GPIO interrupt"},
-	{SYS_STATUS_SLP2INIT,	"SLEEP to INIT"},
-	{SYS_STATUS_RFPLL_LL,	"RF PLL Losing Lock"},
-	{SYS_STATUS_CLKPLL_LL,	"Clock PLL Losing Lock"},
-	{SYS_STATUS_RXSFDTO,	"Receive SFD timeout"},
-	{SYS_STATUS_HPDWARN,	"Half Period Delay Warning"},
-	{SYS_STATUS_TXBERR,	   	"Transmit Buffer Error"},
-	{SYS_STATUS_AFFREJ,	   	"Automatic Frame Filtering rejection"},
-	{SYS_STATUS_HSRBP,	   	"Host Side Receive Buffer Pointer"},
-	{SYS_STATUS_ICRBP,	   	"IC side Receive Buffer Pointer READ ONLY"},
-	{SYS_STATUS_RXRSCS,		"Receiver Reed-Solomon Correction Status"},
-	{SYS_STATUS_RXPREJ,		"Receiver Preamble Rejection"},
-	{SYS_STATUS_TXPUTE,		"Transmit power up time error"},
-	{SYS_STATUS_TXERR,       "Transmit Error TXPUTE or HPDWARN"},
-	{SYS_STATUS_ALL_RX_GOOD, "Any RX events"},
-	{SYS_STATUS_ALL_DBLBUFF, "Any double buffer events"},
-	{SYS_STATUS_ALL_RX_ERR,  "Any RX errors"},
-	{SYS_STATUS_ALL_RX_TO,   "User defined RX timeouts"},
-	{SYS_STATUS_ALL_TX,      "Any TX events"}
-	};
-
-json uwb_status_to_json(uint32 status_reg)
-{
-	std::list<std::string> flags;
-	for (auto& [key, value] : map_reg_status) {
-		if(status_reg & key)
-        {
-            flags.push_back(value);
-            printk("%s\n",value.c_str());
-        }
-	}
-	return json(flags);
-}
 
 void initiator_thread();
 K_THREAD_DEFINE(initiator_main, STACKSIZE, initiator_thread, NULL, NULL, NULL, 99, 0, 0);
 
 void initiator_thread(void)
 {
-    openspi();
-    k_sleep(K_MSEC(100));//2 would be enough
-    port_set_dw1000_slowrate();
-
     LOG_INF("initiator_thread> starting");
-    printf("------------------------------------");
-    if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-        LOG_ERR("dwt_initialise failed");
-        return;
-    }
-    port_set_dw1000_fastrate();
 
-    dwt_configure(&config);
+    mp_start(config);
 
-    dwt_setrxantennadelay(RX_ANT_DLY);
-    dwt_settxantennadelay(TX_ANT_DLY);
+    //expected to be low power saving measures to minimize RF listening time
     dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
     dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
-
-    //dwt_setpreambledetecttimeout(PRE_TIMEOUT);// NOTE: no use of preamble tmo's yet
 
     dwt_setleds(1);
     k_yield();
@@ -246,7 +173,7 @@ void initiator_thread(void)
 
         if (status_reg & SYS_STATUS_RXFCG) 
         {
-            uint32 frame_len;
+            uint32_t frame_len;
 
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
 
@@ -264,7 +191,7 @@ void initiator_thread(void)
             rx_buffer[ALL_MSG_SN_IDX] = 0;
             if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0) {
                 
-                uint32 final_tx_time;
+                uint32_t final_tx_time;
                 int ret;
 
                 /* Retrieve poll transmission and response reception timestamp. */
@@ -280,8 +207,7 @@ void initiator_thread(void)
                 /* Final TX timestamp is the transmission time we programmed 
                  * plus the TX antenna delay.
                  */
-                final_tx_ts = (((uint64)(final_tx_time & 0xFFFFFFFEUL)) << 8) +
-                               TX_ANT_DLY;
+                final_tx_ts = (((uint64_t)(final_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
 
                 /* Write all timestamps in the final message. 
                  * See NOTE 11 below.
@@ -319,9 +245,8 @@ void initiator_thread(void)
                     frame_seq_nb++;
                 }
                 else {
-                    printk("\e[0;33m error - tx failed : status reg= 0x%08lX\n\e[0m",status_reg);
-                    json jstat = uwb_status_to_json(status_reg);
-                    //printk("%s\n",jstat.dump(1).c_str());
+                    printk("\e[0;33m error - tx failed : status reg= 0x%08X\n\e[0m",status_reg);
+                    mp_status_print(status_reg);
                 }
             }
         }
@@ -341,55 +266,6 @@ void initiator_thread(void)
     }
 }
 
-/*! --------------------------------------------------------------------------
- * @fn get_tx_timestamp_u64()
- *
- * @brief Get the TX time-stamp in a 64-bit variable.
- *        /!\ This function assumes that length of time-stamps is 40 bits, 
- *            for both TX and RX!
- *
- * @param  none
- *
- * @return  64-bit value of the read time-stamp.
- */
-static uint64 get_tx_timestamp_u64(void)
-{
-    uint8 ts_tab[5];
-    uint64 ts = 0;
-    int i;
-
-    dwt_readtxtimestamp(ts_tab);
-    for (i = 4; i >= 0; i--) {
-        ts <<= 8;
-        ts |= ts_tab[i];
-    }
-    return ts;
-}
-
-/*! --------------------------------------------------------------------------
- * @fn get_rx_timestamp_u64()
- *
- * @brief Get the RX time-stamp in a 64-bit variable.
- *        /!\ This function assumes that length of time-stamps is 40 bits,
- *        for both TX and RX!
- *
- * @param  none
- *
- * @return  64-bit value of the read time-stamp.
- */
-static uint64 get_rx_timestamp_u64(void)
-{
-    uint8 ts_tab[5];
-    uint64 ts = 0;
-    int i;
-
-    dwt_readrxtimestamp(ts_tab);
-    for (i = 4; i >= 0; i--) {
-        ts <<= 8;
-        ts |= ts_tab[i];
-    }
-    return ts;
-}
 
 /*! --------------------------------------------------------------------------
  * @fn final_msg_set_ts()
@@ -403,10 +279,10 @@ static uint64 get_rx_timestamp_u64(void)
  *
  * @return none
  */
-static void final_msg_set_ts(uint8 *ts_field, uint64 ts)
+static void final_msg_set_ts(uint8_t *ts_field, uint64_t ts)
 {
     for (int i = 0; i < FINAL_MSG_TS_LEN; i++) {
-        ts_field[i] = (uint8) ts;
+        ts_field[i] = (uint8_t) ts;
         ts >>= 8;
     }
 }
