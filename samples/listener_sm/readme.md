@@ -12,7 +12,6 @@ west flash
 
 
 west flash --snr 760130125
-west flash --snr 760130128
 ```
 
 ## uwb json config
