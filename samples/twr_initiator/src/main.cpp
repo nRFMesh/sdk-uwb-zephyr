@@ -141,69 +141,21 @@ void initiator_thread(void)
     dwt_setleds(1);
     k_yield();
     while (1) {
+        tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb++;
+        mp_request(tx_poll_msg,sizeof(tx_poll_msg));
 
-        /* Write frame data to DW1000 and prepare transmission. 
-         * See NOTE 8 below.
-         */
-        tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
-
-        /* Zero offset in TX buffer. */
-        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); 
-
-        /* Zero offset in TX buffer, ranging. */
-        dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); 
-
-        /* Start transmission, indicating that a response is expected so that 
-         * reception is enabled automatically after the frame is sent and the 
-         * delay set by dwt_setrxaftertxdelay() has elapsed.
-         */
-        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-
-        /* We assume that the transmission is achieved correctly, poll for 
-         * reception of a frame or error/timeout. See NOTE 9 below. 
-         */
-        while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & 
-                (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-        { };
-
-        /* Increment frame sequence number after transmission of the poll 
-         * message (modulo 256).
-         */
-        frame_seq_nb++;
-
-        if (status_reg & SYS_STATUS_RXFCG) 
+        uint16_t frame_len;
+        if(mp_receive(rx_buffer, frame_len))
         {
-            uint32_t frame_len;
-
-            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
-
-            /* A frame has been received, read it into the local buffer. */
-            frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-            if (frame_len <= RX_BUF_LEN) {
-                dwt_readrxdata(rx_buffer, frame_len, 0);
-            }
-
-            /* Check that the frame is the expected response from the companion 
-             * "DS TWR responder" example.
-             * As the sequence number field of the frame is not relevant, 
-             * it is cleared to simplify the validation of the frame.
-             */
             rx_buffer[ALL_MSG_SN_IDX] = 0;
             if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0) {
-                
-                uint32_t final_tx_time;
-                int ret;
 
-                /* Retrieve poll transmission and response reception timestamp. */
                 poll_tx_ts = get_tx_timestamp_u64();
                 resp_rx_ts = get_rx_timestamp_u64();
 
                 /* Compute final message transmission time. See NOTE 10 below. */
-                final_tx_time = (resp_rx_ts + 
-                    (RESP_RX_TO_FINAL_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
+                uint32_t final_tx_time = (resp_rx_ts + (RESP_RX_TO_FINAL_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
                 
-                dwt_setdelayedtrxtime(final_tx_time);
-
                 /* Final TX timestamp is the transmission time we programmed 
                  * plus the TX antenna delay.
                  */
@@ -221,28 +173,9 @@ void initiator_thread(void)
                  */
                 tx_final_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
 
-                /* Zero offset in TX buffer. */
-                dwt_writetxdata(sizeof(tx_final_msg), tx_final_msg, 0); 
-                
-                /* Zero offset in TX buffer, ranging. */
-                dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); 
-                ret = dwt_starttx(DWT_START_TX_DELAYED);
-                if (ret == DWT_SUCCESS) {
-                    /* Poll DW1000 until TX frame sent event set. 
-                     * See NOTE 9 below.
-                     */
-                    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
-                    { };
-
-                    /* Clear TXFRS event. */
-                    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-
+                if(mp_send_at(tx_final_msg, sizeof(tx_final_msg), final_tx_time))
+                {
                     printk("success (%u)\n", frame_seq_nb);
-
-                    /* Increment frame sequence number after transmission of 
-                     * the final message (modulo 256).
-                     */
-                    frame_seq_nb++;
                 }
                 else {
                     printk("\e[0;33m error - tx failed : status reg= 0x%08X\n\e[0m",status_reg);

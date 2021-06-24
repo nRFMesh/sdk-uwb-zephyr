@@ -12,10 +12,12 @@
 #include <drivers/dw1000/deca_spi.h>
 #include <drivers/dw1000/port.h>
 
+LOG_MODULE_REGISTER(meshposition, LOG_LEVEL_INF);
+
 #define TX_ANT_DLY 16436
 #define RX_ANT_DLY 16436
 
-LOG_MODULE_REGISTER(meshposition, LOG_LEVEL_INF);
+static uint32_t status_reg = 0;
 
 
 std::map<std::string,uint8_t> invmap_dataRate,invmap_rxPAC,invmap_txPreambLength;
@@ -174,6 +176,61 @@ void mp_start(dwt_config_t &config)
     dwt_setleds(1);
 }
 
+//a request expects a response
+void mp_request(uint8_t* data, uint16_t size)
+{
+	dwt_writetxdata(size, data, 0);//0 offset
+	dwt_writetxfctrl(size, 0, 1);//ranging bit unused by DW1000
+	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);//switch to rx after `setrxaftertxdelay`
+}
+
+uint32_t mp_poll_rx()
+{
+	uint32_t l_status_reg;
+	while (!((l_status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+	{
+	};
+	return l_status_reg;
+}
+
+uint32_t mp_get_status()
+{
+	return status_reg;
+}
+
+//TODO rx_buffer is to be adopted in this file
+#define RX_BUF_LEN 20
+
+bool mp_receive(uint8_t* data, uint16_t &size)
+{
+	bool result = false;
+	status_reg = mp_poll_rx();
+	if(status_reg & SYS_STATUS_RXFCG){
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
+		size = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
+		if (size <= RX_BUF_LEN) {
+			dwt_readrxdata(data, size, 0);
+			result = true;
+		}
+	}
+
+	return result;
+}
+
+bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time)
+{
+	dwt_setdelayedtrxtime(tx_time);//next tansmission timestamp
+	dwt_writetxdata(size, data, 0); 
+	dwt_writetxfctrl(size, 0, 1); 
+	bool result = (dwt_starttx(DWT_START_TX_DELAYED) == DWT_SUCCESS);
+	if(result){
+		while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+		{
+		};
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+	}
+	return result;
+}
 
 /*! --------------------------------------------------------------------------
  * @fn get_tx_timestamp_u64()
@@ -224,3 +281,4 @@ uint64_t get_rx_timestamp_u64(void)
     }
     return ts;
 }
+
