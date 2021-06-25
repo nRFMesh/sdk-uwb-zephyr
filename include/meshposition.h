@@ -14,7 +14,7 @@ json mp_status_to_json(uint32_t status_reg);
 void mp_status_print(uint32_t status_reg);
 
 void mp_start(dwt_config_t &config);
-void mp_request(uint8_t* data, size_t size);
+void mp_request(uint8_t* data, uint16_t size);
 uint32_t mp_poll_rx();
 bool mp_receive(uint8_t* data, uint16_t &size);
 bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time);

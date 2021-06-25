@@ -156,14 +156,8 @@ void initiator_thread(void)
                 /* Compute final message transmission time. See NOTE 10 below. */
                 uint32_t final_tx_time = (resp_rx_ts + (RESP_RX_TO_FINAL_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
                 
-                /* Final TX timestamp is the transmission time we programmed 
-                 * plus the TX antenna delay.
-                 */
                 final_tx_ts = (((uint64_t)(final_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
 
-                /* Write all timestamps in the final message. 
-                 * See NOTE 11 below.
-                 */
                 final_msg_set_ts(&tx_final_msg[FINAL_MSG_POLL_TX_TS_IDX], poll_tx_ts);
                 final_msg_set_ts(&tx_final_msg[FINAL_MSG_RESP_RX_TS_IDX], resp_rx_ts);
                 final_msg_set_ts(&tx_final_msg[FINAL_MSG_FINAL_TX_TS_IDX], final_tx_ts);
@@ -175,7 +169,7 @@ void initiator_thread(void)
 
                 if(mp_send_at(tx_final_msg, sizeof(tx_final_msg), final_tx_time))
                 {
-                    printk("success (%u)\n", frame_seq_nb);
+                    printk("success with frame %u\n", frame_seq_nb);
                 }
                 else {
                     printk("\e[0;33m error - tx failed : status reg= 0x%08X\n\e[0m",status_reg);
@@ -185,11 +179,8 @@ void initiator_thread(void)
         }
         else {
             printk("timeout: (rx)\n");
-
             /* Clear RX error/timeout events in the DW1000 status register. */
-            dwt_write32bitreg(SYS_STATUS_ID, 
-                              SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
-
+            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
             /* Reset RX to properly reinitialise LDE operation. */
             dwt_rxreset();
         }
