@@ -24,14 +24,21 @@ typedef struct
     uint8_t sequence;
     uint8_t source;
     uint8_t dest;
+}header_t;
+
+typedef struct
+{
+    header_t header;
+    uint16_t crc;
 }msg_header_t;
 
 typedef struct
 {
-    msg_header_t header;
+    header_t header;
     uint32_t poll_tx_ts;
     uint32_t resp_rx_ts;
     uint32_t final_tx_ts;
+    uint16_t crc;
 }msg_twr_final_t;
 
 void mp_start();
@@ -43,6 +50,7 @@ json mp_status_to_json(uint32_t status_reg);
 void mp_status_print(uint32_t status_reg);
 
 void mp_start(dwt_config_t &config);
+uint32_t mp_get_status();
 void mp_rx_now();
 void mp_rx_after_tx(uint32_t delay_us);
 

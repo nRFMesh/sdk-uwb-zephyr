@@ -1,0 +1,15 @@
+0x00802f72
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Any TX events
+Receiver Preamble Detected status
+Receiver Start Frame Delimiter Detected.
+LDE processing done
+Transmit Error TXPUTE or HPDWARN
+Receiver PHY Header Detect
+Receiver Data Frame Ready
+Any double buffer events
+Any RX events
+SLEEP to INIT

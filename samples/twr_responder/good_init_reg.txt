@@ -1,0 +1,9 @@
+0x008000f2
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+

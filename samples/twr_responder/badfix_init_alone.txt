@@ -1,0 +1,52 @@
+*** Booting Zephyr OS build v2.6.0-rc1-120-g41e885947e4f  ***
+
+
+rtt:~$ device_id: deca0130
+mp_receive() reg1 = 0x008200f2 ; reg2 = 0x008000f2 
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+initiator> sequence(1) over; reg1 = 0x00800002 ; reg2 = 0x008000f2
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+[00:00:00.274,780] <inf> main: initiator_thread> starting
+rtt:~$ [00:00:00.294,189] <wrn> meshposition: mp_receive() not RXFCG
+rtt:~$ [00:00:00.296,203] <err> meshposition: mp_receive(8) fail
+rtt:~$ rtt:~$ mp_receive() reg1 = 0x008200f2 ; reg2 = 0x008000f2 
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+initiator> sequence(2) over; reg1 = 0x00800[00:00:03.309,692] <wrn> meshposition: mp_receive() not RXFCG
+rtt:~$ [00:00:03.311,737] <err> meshposition: mp_receive(8) fail
+rtt:~$ rtt:~$ mp_receive() reg1 = 0x008200f2 ; reg2 = 0x008000f2 
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+initiator> sequence(3) over; reg1 = 0x008000f2 ; reg2 = 0x008000f2
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+[00:00:06.329,193] <wrn> meshposition: mp_receive() not RXFCG
+rtt:~$ [00:00:06.331,207] <err> meshposition: mp_receive(8) fail
+rtt:~$ rtt:~$ 

@@ -199,9 +199,9 @@ void mp_request(uint8_t* data, uint16_t size)
 	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);//switch to rx after `setrxaftertxdelay`
 }
 
-void mp_request(msg_header_t &header)
+void mp_request(msg_header_t &message)
 {
-	mp_request((uint8_t*)&header,(uint16_t)sizeof(msg_header_t));
+	mp_request((uint8_t*)&message,(uint16_t)sizeof(msg_header_t));
 }
 
 uint32_t mp_poll_rx()
@@ -215,7 +215,7 @@ uint32_t mp_poll_rx()
 
 uint32_t mp_get_status()
 {
-	return status_reg;
+	return dwt_read32bitreg(SYS_STATUS_ID);
 }
 
 //TODO rx_buffer is to be adopted in this file
@@ -238,7 +238,10 @@ bool mp_receive(uint8_t* data, uint16_t expected_size)
 		dwt_write32bitreg(SYS_STATUS_ID,SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);//clear errors
 		dwt_rxreset();
 		LOG_WRN("mp_receive() not RXFCG");
-		mp_status_print(status_reg);
+		uint32_t reg2 = mp_get_status();
+		printk("mp_receive() reg1 = 0x%08x ; reg2 = 0x%08x \n",status_reg,reg2);
+		mp_status_print(reg2);
+		status_reg = reg2;
 	}
 
 	return result;
@@ -247,12 +250,12 @@ bool mp_receive(uint8_t* data, uint16_t expected_size)
 bool mp_receive(msg_id_t id)
 {
 	bool result = false;
-	msg_header_t header;
-	if(mp_receive((uint8_t*)&header, sizeof(msg_header_t))){
-		if(header.id == id){//TODO check that dest is self when id is moved as global here
+	msg_header_t message;
+	if(mp_receive((uint8_t*)&message, sizeof(msg_header_t))){
+		if(message.header.id == id){//TODO check that dest is self when id is moved as global here
 			result = true;
 		}else{
-			LOG_ERR("mp_receive() id mismatch id(%u/%u)",(uint8_t)id,(uint8_t)header.id);
+			LOG_ERR("mp_receive() id mismatch id(%u/%u)",(uint8_t)id,(uint8_t)message.header.id);
 		}
 	}else{
 		LOG_ERR("mp_receive(%u) fail",(uint8_t)id);
@@ -260,14 +263,14 @@ bool mp_receive(msg_id_t id)
 	return result;
 }
 
-bool mp_receive(msg_id_t id,msg_header_t& header)
+bool mp_receive(msg_id_t id,msg_header_t& message)
 {
 	bool result = false;
-	if(mp_receive((uint8_t*)&header, sizeof(msg_header_t))){
-		if(header.id == id){//TODO check that dest is self when id is moved as global here
+	if(mp_receive((uint8_t*)&message, sizeof(msg_header_t))){
+		if(message.header.id == id){//TODO check that dest is self when id is moved as global here
 			result = true;
 		}else{
-			LOG_ERR("mp_receive() mismatch id(%u/%u)",(uint8_t)id,(uint8_t)header.id);
+			LOG_ERR("mp_receive() mismatch id(%u/%u)",(uint8_t)id,(uint8_t)message.header.id);
 		}
 	}else{
 		LOG_ERR("mp_receive(%u,header) fail",(uint8_t)id);
@@ -304,6 +307,7 @@ bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time, uint8_t flag)
 	}else{
 		LOG_ERR("dwt_starttx() error");
 		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
+		printk("mp_send_at():\n");
 		mp_status_print(status_reg);
 	}
 	return result;

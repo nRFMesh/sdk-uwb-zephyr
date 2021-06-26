@@ -1,0 +1,26 @@
+*** Booting Zephyr OS build v2.6.0-rc1-120-g41e885947e4f  ***
+
+
+rtt:~$ device_id: deca0130
+timeout: (rx)
+initiator> sequence(1) over; reg1 = 0x02800002 ; reg2 = 0x028000f2
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+Clock PLL Losing Lock
+[00:00:00.428,710] <inf> main: initiator_thread> starting
+rtt:~$ rtt:~$ timeout: (rx)
+sequence(2) over; reg1 = 0x028000f2 ; reg2 = 0x028000f2
+Clock PLL Lock
+Transmit Frame Begins
+Transmit Preamble Sent
+Transmit PHY Header Sent
+Transmit Frame Sent
+Any TX events
+SLEEP to INIT
+Clock PLL Losing Lock
+timeout: (rx)
