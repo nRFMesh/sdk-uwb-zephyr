@@ -43,7 +43,7 @@
 
 #define LOG_LEVEL 3
 #include <logging/log.h>
-LOG_MODULE_REGISTER(main);
+LOG_MODULE_REGISTER(main, LOG_LEVEL_ERR);
 
 //[N] P0.13 => M_PIN17 => J7 pin 8
 #define DEBUG_PIN_APP 	 13
@@ -99,7 +99,7 @@ void responder_thread(void)
         // - pulse2: 'tx resp till rx final'
         // - pulse3: 'computing distance'
         uint32_t reg1 = mp_get_status();
-        LOG_INF("starting sequence %u",sequence++);
+        LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
         APP_SET;
         mp_rx_now();
         msg_header_t rx_poll_msg;
@@ -142,19 +142,19 @@ void responder_thread(void)
                     sprintf(dist_str, "responder> dist (%u): %3.2lf m\n",rx_poll_msg.header.sequence, distance);
                     printk("%s", dist_str);
                 }else{
-                    LOG_ERR("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
+                    LOG_WRN("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
                     APP_CLEAR;
                 }
             }else{
-                LOG_ERR("mp_send_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
+                LOG_WRN("mp_send_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
             }
         }else{
             APP_CLEAR;
         }
 
         uint32_t reg2 = mp_get_status();
-        printk("responder> sequence(%u) over; reg1 = 0x%08x ; reg2 = 0x%08x\n",sequence,reg1,reg2);
-        mp_status_print(reg2);
+        LOG_INF("responder> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
+        sequence++;
         k_sleep(K_MSEC(100));
     }
 }

@@ -39,7 +39,7 @@ using json = nlohmann::json;
 
 #define LOG_LEVEL 3
 #include <logging/log.h>
-LOG_MODULE_REGISTER(main);
+LOG_MODULE_REGISTER(main, LOG_LEVEL_ERR);
 
 //[N] P0.13 => M_PIN17 => J7 pin 8
 #define DEBUG_PIN_APP 	 13
@@ -96,15 +96,16 @@ void initiator_thread(void)
 
     dwt_setleds(1);
     k_yield();
-    uint8_t frame_seq_nb = 0;
+    uint8_t sequence = 0;
     while (1) {
         //APP_SET_CLEAR 
         // - pulse1: 'tx 1st till rx resp' ; 
         // - pulse2: 'tx final delayed till sent'
         uint32_t reg1 = mp_get_status();
+        LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
         mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);
 
-        msg_header_t twr_poll = {msg_id_t::twr_1_poll, frame_seq_nb++, this_initiator_node_id , responder_node_id,0};
+        msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, this_initiator_node_id , responder_node_id,0};
         APP_SET;
         mp_request(twr_poll);
 
@@ -121,7 +122,6 @@ void initiator_thread(void)
             msg_twr_final_t twr_final;
             twr_final.header = twr_poll.header;//keep same source and dest
             twr_final.header.id = msg_id_t::twr_3_final;
-            twr_final.header.sequence++;
             twr_final.poll_tx_ts = (uint32_t)poll_tx_ts;//trunc 64 bits to 32 bits
             twr_final.resp_rx_ts = (uint32_t)resp_rx_ts;//trunc 64 bits to 32 bits
             twr_final.final_tx_ts = (uint32_t)final_tx_ts;//trunc 64 bits to 32 bits
@@ -129,19 +129,20 @@ void initiator_thread(void)
             if(mp_send_at((uint8_t*)&twr_final, sizeof(msg_twr_final_t), final_tx_time))
             {
                 APP_CLEAR;
-                printk("initiator> success with frame %u\n", frame_seq_nb);
-                printk("initiator> poll_tx= 0x%08llx ; resp_rx= 0x%08llx\n", poll_tx_ts, resp_rx_ts);
-                printk("initiator> final_tx(ant)= 0x%08llx ; final_tx(chip)= 0x%04x\n", final_tx_ts, final_tx_time);
+                printk("initiator> success with frame %u\n", sequence);
+                LOG_DBG("initiator> poll_tx= 0x%08llx ; resp_rx= 0x%08llx\n", poll_tx_ts, resp_rx_ts);
+                LOG_DBG("initiator> final_tx(ant)= 0x%08llx ; final_tx(chip)= 0x%04x\n", final_tx_ts, final_tx_time);
             }else{
+                LOG_WRN("mp_send_at(twr_3_final) fail at sequence %u",sequence);
                 APP_CLEAR;
             }
         }else{
+            LOG_WRN("mp_receive(twr_2_resp) fail at sequence %u",sequence);
             APP_CLEAR;
         }
         uint32_t reg2 = mp_get_status();
-        printk("initiator> sequence(%u) over; reg1 = 0x%08x ; reg2 = 0x%08x\n",frame_seq_nb,reg1,reg2);
-        mp_status_print(reg2);
-        /* Execute a delay between ranging exchanges. */
+        LOG_INF("initiator> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
+        sequence++;
         k_sleep(K_MSEC(RNG_DELAY_MS));
     }
 }
