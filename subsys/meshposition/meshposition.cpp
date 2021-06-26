@@ -176,12 +176,32 @@ void mp_start(dwt_config_t &config)
     dwt_setleds(1);
 }
 
+void mp_rx_now()
+{
+	dwt_setrxtimeout(0); // 0 : disable timeout
+	dwt_rxenable(DWT_START_RX_IMMEDIATE);
+}
+
+#define RX_TIMEOUT_UUS 10000
+
+void mp_rx_after_tx(uint32_t delay_us)
+{
+    dwt_setrxaftertxdelay(delay_us);
+    dwt_setrxtimeout(RX_TIMEOUT_UUS);
+}
+
+
 //a request expects a response
 void mp_request(uint8_t* data, uint16_t size)
 {
 	dwt_writetxdata(size, data, 0);//0 offset
 	dwt_writetxfctrl(size, 0, 1);//ranging bit unused by DW1000
 	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);//switch to rx after `setrxaftertxdelay`
+}
+
+void mp_request(msg_header_t &header)
+{
+	mp_request((uint8_t*)&header,(uint16_t)sizeof(msg_header_t));
 }
 
 uint32_t mp_poll_rx()
@@ -200,34 +220,91 @@ uint32_t mp_get_status()
 
 //TODO rx_buffer is to be adopted in this file
 #define RX_BUF_LEN 20
-
-bool mp_receive(uint8_t* data, uint16_t &size)
+//TODO check that we're on listening state
+bool mp_receive(uint8_t* data, uint16_t expected_size)
 {
 	bool result = false;
 	status_reg = mp_poll_rx();
 	if(status_reg & SYS_STATUS_RXFCG){
-		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);
-		size = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
-		if (size <= RX_BUF_LEN) {
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG | SYS_STATUS_TXFRS);//clearing any rx and tx
+		uint16_t size = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFLEN_MASK;
+		if (size == expected_size) {
 			dwt_readrxdata(data, size, 0);
 			result = true;
+		}else{
+			LOG_ERR("rx size %u != expected_size %u",size,expected_size);
 		}
+	}else{
+		dwt_write32bitreg(SYS_STATUS_ID,SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);//clear errors
+		dwt_rxreset();
+		LOG_WRN("mp_receive() not RXFCG");
+		mp_status_print(status_reg);
 	}
 
 	return result;
 }
 
-bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time)
+bool mp_receive(msg_id_t id)
+{
+	bool result = false;
+	msg_header_t header;
+	if(mp_receive((uint8_t*)&header, sizeof(msg_header_t))){
+		if(header.id == id){//TODO check that dest is self when id is moved as global here
+			result = true;
+		}else{
+			LOG_ERR("mp_receive() id mismatch id(%u/%u)",(uint8_t)id,(uint8_t)header.id);
+		}
+	}else{
+		LOG_ERR("mp_receive(%u) fail",(uint8_t)id);
+	}
+	return result;
+}
+
+bool mp_receive(msg_id_t id,msg_header_t& header)
+{
+	bool result = false;
+	if(mp_receive((uint8_t*)&header, sizeof(msg_header_t))){
+		if(header.id == id){//TODO check that dest is self when id is moved as global here
+			result = true;
+		}else{
+			LOG_ERR("mp_receive() mismatch id(%u/%u)",(uint8_t)id,(uint8_t)header.id);
+		}
+	}else{
+		LOG_ERR("mp_receive(%u,header) fail",(uint8_t)id);
+	}
+	return result;
+}
+
+bool mp_receive(msg_id_t id,msg_twr_final_t& final_msg)
+{
+	bool result = false;
+	if(mp_receive((uint8_t*)&final_msg, sizeof(msg_twr_final_t))){
+		if(final_msg.header.id == id){//TODO check that dest is self when id is moved as global here
+			result = true;
+		}else{
+			LOG_ERR("mp_receive() id mismatch(%u/%u)",(uint8_t)id,(uint8_t)final_msg.header.id);
+		}
+	}else{
+		LOG_ERR("mp_receive(%u,final_msg) fail",(uint8_t)id);
+	}
+	return result;
+}
+
+bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time, uint8_t flag)
 {
 	dwt_setdelayedtrxtime(tx_time);//next tansmission timestamp
 	dwt_writetxdata(size, data, 0); 
 	dwt_writetxfctrl(size, 0, 1); 
-	bool result = (dwt_starttx(DWT_START_TX_DELAYED) == DWT_SUCCESS);
+	bool result = (dwt_starttx(DWT_START_TX_DELAYED | flag) == DWT_SUCCESS);
 	if(result){
 		while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
 		{
 		};
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+	}else{
+		LOG_ERR("dwt_starttx() error");
+		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
+		mp_status_print(status_reg);
 	}
 	return result;
 }
