@@ -120,9 +120,10 @@ void mp_status_print(uint32_t status_reg)
 	for (auto& [key, value] : map_reg_status) {
 		if(status_reg & key)
         {
-            printk("%s\n",value.c_str());
+            printk("%s; ",value.c_str());
         }
 	}
+	printk("\n");
 }
 
 void mp_conf_to_json(dwt_config_t &conf,json &jconf)
@@ -176,6 +177,11 @@ void mp_start(dwt_config_t &config)
     dwt_setleds(1);
 }
 
+/* RX can be started
+ - Immediatley					mp_rx_now()
+ - After TX with a given delay 	mp_rx_after_tx()
+ - At a given timestamp			not api provided. uses dwt_setdelayedtrxtime() and dwt_rxenable() with DWT_START_RX_DELAYED
+*/
 void mp_rx_now()
 {
 	dwt_setrxtimeout(0); // 0 : disable timeout
@@ -188,20 +194,6 @@ void mp_rx_after_tx(uint32_t delay_us)
 {
     dwt_setrxaftertxdelay(delay_us);
     dwt_setrxtimeout(RX_TIMEOUT_UUS);
-}
-
-
-//a request expects a response
-void mp_request(uint8_t* data, uint16_t size)
-{
-	dwt_writetxdata(size, data, 0);//0 offset
-	dwt_writetxfctrl(size, 0, 1);//ranging bit unused by DW1000
-	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);//switch to rx after `setrxaftertxdelay`
-}
-
-void mp_request(msg_header_t &message)
-{
-	mp_request((uint8_t*)&message,(uint16_t)sizeof(msg_header_t));
 }
 
 uint32_t mp_poll_rx()
@@ -218,8 +210,6 @@ uint32_t mp_get_status()
 	return dwt_read32bitreg(SYS_STATUS_ID);
 }
 
-//TODO rx_buffer is to be adopted in this file
-#define RX_BUF_LEN 20
 //TODO check that we're on listening state
 bool mp_receive(uint8_t* data, uint16_t expected_size)
 {
@@ -237,10 +227,11 @@ bool mp_receive(uint8_t* data, uint16_t expected_size)
 	}else{
 		dwt_write32bitreg(SYS_STATUS_ID,SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);//clear errors
 		dwt_rxreset();
-		LOG_WRN("mp_receive() not RXFCG");
+		LOG_WRN("mp_receive() no 'RX Frame Checksum Good'");
 		uint32_t reg2 = mp_get_status();
-		printk("mp_receive() reg1 = 0x%08x ; reg2 = 0x%08x \n",status_reg,reg2);
-		mp_status_print(reg2);
+		uint32_t reg_removed = (status_reg ^ reg2);
+		LOG_WRN("mp_receive() reg1 = 0x%08x ; reg2 = 0x%08x ; removed =  0x%08x",status_reg,reg2,reg_removed);
+		mp_status_print(reg_removed);
 		status_reg = reg2;
 	}
 
@@ -293,24 +284,69 @@ bool mp_receive(msg_id_t id,msg_twr_final_t& final_msg)
 	return result;
 }
 
+
+//a request expects a response
+void mp_request(uint8_t* data, uint16_t size)
+{
+	dwt_writetxdata(size, data, 0);//0 offset
+	dwt_writetxfctrl(size, 0, 1);//ranging bit unused by DW1000
+	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);//switch to rx after `setrxaftertxdelay`
+}
+
+void mp_request(msg_header_t &message)
+{
+	mp_request((uint8_t*)&message,(uint16_t)sizeof(msg_header_t));
+}
+
+void recover_tx_errors()
+{
+	uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
+	if(status & SYS_STATUS_TXERR)
+	{
+		dwt_write8bitoffsetreg(SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8)SYS_CTRL_TRXOFF);
+	}
+}
+
+/*! @fn mp_send_at()
+ * @param tx_time : higher 31 bits (bit 0 ignored) from system time which is 40 bits
+ * unit is ~ 8 ns or (1/124,8) us ~= 0.00801282... us
+ * all _at() functions :
+ * - The Frame RMARKER
+ * - do not include antenna delay
+ * - do not consider preamble time (starts earlier)
+*/
 bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time, uint8_t flag)
 {
-	dwt_setdelayedtrxtime(tx_time);//next tansmission timestamp
+	uint32_t reg1 = dwt_read32bitreg(SYS_STATUS_ID);
+	//next tansmission timestamp (although same reg can be used for delayed reception)
+	dwt_setdelayedtrxtime(tx_time);
 	dwt_writetxdata(size, data, 0); 
 	dwt_writetxfctrl(size, 0, 1); 
-	bool result = (dwt_starttx(DWT_START_TX_DELAYED | flag) == DWT_SUCCESS);
-	if(result){
+	bool late = dwt_starttx(DWT_START_TX_DELAYED | flag);
+	if(late == DWT_SUCCESS){
 		while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
 		{
 		};
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+		return true;
 	}else{
-		LOG_ERR("dwt_starttx() error");
+		uint32_t reg2 = dwt_read32bitreg(SYS_STATUS_ID);
+		recover_tx_errors();
 		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
-		printk("mp_send_at():\n");
-		mp_status_print(status_reg);
+		LOG_WRN("mp_send_at() - dwt_starttx() late ; reg1 = 0x%08x ; reg2 = 0x%08x; regnow = 0x%08x",reg1,reg2,status_reg);
+		uint32_t produced = (reg2 ^ reg1)&reg2;					//went from 0 to 1
+		uint32_t recovered = (!(status_reg ^ reg2))&(!status_reg);	//went from 1 to 0
+		LOG_WRN("produced = 0x%08x",produced);
+		mp_status_print(produced);
+		LOG_WRN("recovered = 0x%08x",recovered);
+		mp_status_print(recovered);
+		return false;
 	}
-	return result;
+}
+
+bool mp_request_at(uint8_t* data, uint16_t size, uint64_t tx_time)
+{
+	return mp_send_at(data,size,tx_time,DWT_RESPONSE_EXPECTED);
 }
 
 /*! --------------------------------------------------------------------------

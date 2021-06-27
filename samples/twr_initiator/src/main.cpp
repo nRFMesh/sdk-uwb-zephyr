@@ -75,6 +75,7 @@ uint8_t responder_node_id       = 2;
 #define UUS_TO_DWT_TIME 65536
 
 
+
 #define POLL_TX_TO_RESP_RX_DLY_UUS 300
 #define RESP_RX_TO_FINAL_TX_DLY_UUS 4000
 
@@ -112,8 +113,8 @@ void initiator_thread(void)
         if(mp_receive(msg_id_t::twr_2_resp))
         {
             APP_CLEAR;
-            uint64_t poll_tx_ts = get_tx_timestamp_u64();
-            uint64_t resp_rx_ts = get_rx_timestamp_u64();
+            uint64_t poll_tx_ts = get_tx_timestamp_u64();// DWT_TIME
+            uint64_t resp_rx_ts = get_rx_timestamp_u64();// DWT_TIME
             //tx res 9 bits (8 bits shit and 1 bit mask)
             uint32_t final_tx_time = (resp_rx_ts + (RESP_RX_TO_FINAL_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;   //tranceiver time format
             //prorammed TX + antenna delay

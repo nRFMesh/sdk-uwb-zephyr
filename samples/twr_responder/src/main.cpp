@@ -116,7 +116,7 @@ void responder_thread(void)
                     rx_poll_msg.header.dest , rx_poll_msg.header.source,0
                 };
             APP_SET;
-            if(mp_send_at((uint8_t*)&tx_resp_msg, sizeof(msg_header_t), resp_tx_time,DWT_RESPONSE_EXPECTED)){
+            if(mp_request_at((uint8_t*)&tx_resp_msg, sizeof(msg_header_t), resp_tx_time)){
                 msg_twr_final_t final_msg;
                 if(mp_receive(msg_id_t::twr_3_final,final_msg)){
                     APP_CLEAR;
@@ -146,7 +146,7 @@ void responder_thread(void)
                     APP_CLEAR;
                 }
             }else{
-                LOG_WRN("mp_send_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
+                LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
             }
         }else{
             APP_CLEAR;
