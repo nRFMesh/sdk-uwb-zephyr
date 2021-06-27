@@ -22,6 +22,8 @@
 
 #include <string.h>
 
+#include <meshposition.h>
+
 #include <drivers/dw1000/deca_device_api.h>
 #include <drivers/dw1000/deca_regs.h>
 #include <drivers/dw1000/deca_spi.h>
@@ -35,9 +37,28 @@
 #include <json.hpp>
 using json = nlohmann::json;
 
+#include <drivers/gpio.h>
+
 #define LOG_LEVEL 3
 #include <logging/log.h>
 LOG_MODULE_REGISTER(main);
+
+//[N] P0.13 => M_PIN17 => J7 pin 8
+#define DEBUG_PIN_APP 	 13
+
+//0.625 us per toggle
+#define APP_SET 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 1)	
+#define APP_CLEAR 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 0)
+
+const struct device *gpio_dev;
+void gpio_pin_init()
+{
+	gpio_dev = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+	int ret = gpio_pin_configure(gpio_dev, DEBUG_PIN_APP, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		LOG_ERR("gpio_pin_configure() failed");
+	}
+}
 
 /* Example application name and version to display on console. */
 #define APP_HEADER "\nDWM1001 & Zephyr\n"
@@ -128,68 +149,15 @@ static void final_msg_set_ts(uint8 *ts_field, uint64 ts);
 
 #define STACKSIZE 2048
 
-std::map<unsigned long,std::string> map_reg_status {
-	{SYS_STATUS_IRQS,	   	"Interrupt Request Status READ ONLY"},
-	{SYS_STATUS_CPLOCK,	   	"Clock PLL Lock"},
-	{SYS_STATUS_ESYNCR,	   	"External Sync Clock Reset"},
-	{SYS_STATUS_AAT,	   	"Automatic Acknowledge Trigger"},
-	{SYS_STATUS_TXFRB,	   	"Transmit Frame Begins"},
-	{SYS_STATUS_TXPRS,	   	"Transmit Preamble Sent"},
-	{SYS_STATUS_TXPHS,	   	"Transmit PHY Header Sent"},
-	{SYS_STATUS_TXFRS,	   	"Transmit Frame Sent"},
-	{SYS_STATUS_RXPRD,	   	"Receiver Preamble Detected status"},
-	{SYS_STATUS_RXSFDD,	   	"Receiver Start Frame Delimiter Detected."},
-	{SYS_STATUS_LDEDONE,   	"LDE processing done"},
-	{SYS_STATUS_RXPHD,	   	"Receiver PHY Header Detect"},
-	{SYS_STATUS_RXPHE,	   	"Receiver PHY Header Error"},
-	{SYS_STATUS_RXDFR,	   	"Receiver Data Frame Ready"},
-	{SYS_STATUS_RXFCG,	   	"Receiver FCS Good"},
-	{SYS_STATUS_RXFCE,	   	"Receiver FCS Error"},
-	{SYS_STATUS_RXRFSL,	   	"Receiver Reed Solomon Frame Sync Loss"},
-	{SYS_STATUS_RXRFTO,	   	"Receive Frame Wait Timeout"},
-	{SYS_STATUS_LDEERR,	   	"Leading edge detection processing error"},
-	{SYS_STATUS_reserved,  	"bit19 reserved"},
-	{SYS_STATUS_RXOVRR,	   	"Receiver Overrun"},
-	{SYS_STATUS_RXPTO,	   	"Preamble detection timeout"},
-	{SYS_STATUS_GPIOIRQ,	"GPIO interrupt"},
-	{SYS_STATUS_SLP2INIT,	"SLEEP to INIT"},
-	{SYS_STATUS_RFPLL_LL,	"RF PLL Losing Lock"},
-	{SYS_STATUS_CLKPLL_LL,	"Clock PLL Losing Lock"},
-	{SYS_STATUS_RXSFDTO,	"Receive SFD timeout"},
-	{SYS_STATUS_HPDWARN,	"Half Period Delay Warning"},
-	{SYS_STATUS_TXBERR,	   	"Transmit Buffer Error"},
-	{SYS_STATUS_AFFREJ,	   	"Automatic Frame Filtering rejection"},
-	{SYS_STATUS_HSRBP,	   	"Host Side Receive Buffer Pointer"},
-	{SYS_STATUS_ICRBP,	   	"IC side Receive Buffer Pointer READ ONLY"},
-	{SYS_STATUS_RXRSCS,		"Receiver Reed-Solomon Correction Status"},
-	{SYS_STATUS_RXPREJ,		"Receiver Preamble Rejection"},
-	{SYS_STATUS_TXPUTE,		"Transmit power up time error"},
-	{SYS_STATUS_TXERR,       "Transmit Error TXPUTE or HPDWARN"},
-	{SYS_STATUS_ALL_RX_GOOD, "Any RX events"},
-	{SYS_STATUS_ALL_DBLBUFF, "Any double buffer events"},
-	{SYS_STATUS_ALL_RX_ERR,  "Any RX errors"},
-	{SYS_STATUS_ALL_RX_TO,   "User defined RX timeouts"},
-	{SYS_STATUS_ALL_TX,      "Any TX events"}
-	};
-
-json uwb_status_to_json(uint32 status_reg)
-{
-	std::list<std::string> flags;
-	for (auto& [key, value] : map_reg_status) {
-		if(status_reg & key)
-        {
-            flags.push_back(value);
-            printk("%s\n",value.c_str());
-        }
-	}
-	return json(flags);
-}
-
 void initiator_thread();
 K_THREAD_DEFINE(initiator_main, STACKSIZE, initiator_thread, NULL, NULL, NULL, 99, 0, 0);
 
 void initiator_thread(void)
 {
+	gpio_pin_init();
+	APP_CLEAR;
+	APP_SET;
+	APP_CLEAR;
     openspi();
     k_sleep(K_MSEC(100));//2 would be enough
     port_set_dw1000_slowrate();
@@ -214,10 +182,11 @@ void initiator_thread(void)
     dwt_setleds(1);
     k_yield();
     while (1) {
-
+        //APP_SET_CLEAR pulse1: 'tx 1st till rx resp' ; pulse2: 'tx final delayed till sent'
         /* Write frame data to DW1000 and prepare transmission. 
          * See NOTE 8 below.
          */
+        uint32_t reg1 = dwt_read32bitreg(SYS_STATUS_ID);
         tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
 
         /* Zero offset in TX buffer. */
@@ -230,6 +199,7 @@ void initiator_thread(void)
          * reception is enabled automatically after the frame is sent and the 
          * delay set by dwt_setrxaftertxdelay() has elapsed.
          */
+        APP_SET;
         dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
 
         /* We assume that the transmission is achieved correctly, poll for 
@@ -238,7 +208,7 @@ void initiator_thread(void)
         while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & 
                 (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
         { };
-
+        APP_CLEAR;
         /* Increment frame sequence number after transmission of the poll 
          * message (modulo 256).
          */
@@ -300,6 +270,7 @@ void initiator_thread(void)
                 
                 /* Zero offset in TX buffer, ranging. */
                 dwt_writetxfctrl(sizeof(tx_final_msg), 0, 1); 
+                APP_SET;
                 ret = dwt_starttx(DWT_START_TX_DELAYED);
                 if (ret == DWT_SUCCESS) {
                     /* Poll DW1000 until TX frame sent event set. 
@@ -307,6 +278,7 @@ void initiator_thread(void)
                      */
                     while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
                     { };
+                    APP_CLEAR;
 
                     /* Clear TXFRS event. */
                     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
@@ -319,9 +291,9 @@ void initiator_thread(void)
                     frame_seq_nb++;
                 }
                 else {
+                    APP_CLEAR;
                     printk("\e[0;33m error - tx failed : status reg= 0x%08lX\n\e[0m",status_reg);
-                    json jstat = uwb_status_to_json(status_reg);
-                    //printk("%s\n",jstat.dump(1).c_str());
+                    mp_status_print(status_reg);
                 }
             }
         }
@@ -336,6 +308,10 @@ void initiator_thread(void)
             dwt_rxreset();
         }
 
+        APP_CLEAR;
+        uint32_t reg2 = dwt_read32bitreg(SYS_STATUS_ID);
+        printk("initiator> sequence(%u) over; reg1 = 0x%08x ; reg2 = 0x%08x\n",frame_seq_nb,reg1,reg2);
+        mp_status_print(reg2);
         /* Execute a delay between ranging exchanges. */
         k_sleep(K_MSEC(RNG_DELAY_MS));
     }

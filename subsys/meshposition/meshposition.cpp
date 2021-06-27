@@ -5,6 +5,7 @@
 #include <list>
 
 #include <logging/log.h>
+#include <sys/printk.h>
 
 #include <drivers/dw1000/deca_regs.h>
 #include <drivers/dw1000/deca_spi.h>
@@ -106,6 +107,16 @@ json mp_status_to_json(uint32 status_reg)
 		if(status_reg & key)flags.push_back(value);
 	}
 	return json(flags);
+}
+
+void mp_status_print(uint32_t status_reg)
+{
+	for (auto& [key, value] : map_reg_status) {
+		if(status_reg & key)
+        {
+            printk("%s\n",value.c_str());
+        }
+	}
 }
 
 void mp_conf_to_json(dwt_config_t &conf,json &jconf)

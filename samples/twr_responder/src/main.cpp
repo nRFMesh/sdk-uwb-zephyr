@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <meshposition.h>
+
 #include <drivers/dw1000/deca_device_api.h>
 #include <drivers/dw1000/deca_regs.h>
 #include <drivers/dw1000/deca_spi.h>
@@ -38,9 +40,28 @@
 #include <zephyr.h>
 #include <sys/printk.h>
 
+#include <drivers/gpio.h>
+
 #define LOG_LEVEL 3
 #include <logging/log.h>
 LOG_MODULE_REGISTER(main);
+
+//[N] P0.13 => M_PIN17 => J7 pin 8
+#define DEBUG_PIN_APP 	 13
+
+//0.625 us per toggle
+#define APP_SET 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 1)	
+#define APP_CLEAR 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 0)
+
+const struct device *gpio_dev;
+void gpio_pin_init()
+{
+	gpio_dev = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+	int ret = gpio_pin_configure(gpio_dev, DEBUG_PIN_APP, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		LOG_ERR("gpio_pin_configure() failed");
+	}
+}
 
 /* Example application name and version to display on console. */
 #define APP_HEADER "\nDWM1001 & Zephyr\n"
@@ -169,20 +190,30 @@ void uwb_start()
 
 void responder_thread(void)
 {
+	gpio_pin_init();
+	APP_CLEAR;
+	APP_SET;
+	APP_CLEAR;
     uwb_start();
 
     k_yield();
 
     while (1) {
+        //APP_SET_CLEAR 
+        // - pulse1: 'pending 1st reception' ; 
+        // - pulse2: 'tx resp till rx final'
+        // - pulse3: 'computing distance'
+        uint32_t reg1 = dwt_read32bitreg(SYS_STATUS_ID);
         dwt_setrxtimeout(0); // 0 : disable timeout
         dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
+        APP_SET;
         /* Poll for reception of a frame or error/timeout. See NOTE 8 below. */
         while   ( !(    (status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & 
                         (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)
                     ))
         { };
-
+        APP_CLEAR;
         if (status_reg & SYS_STATUS_RXFCG) {    //Receiver FCS Good
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);//clear flag
 
@@ -219,6 +250,7 @@ void responder_thread(void)
                 
                 /* Zero offset in TX buffer, ranging. */
                 dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); 
+                APP_SET;
                 int ret = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
 
                 /* If dwt_starttx() returns an error, abandon this ranging 
@@ -226,6 +258,7 @@ void responder_thread(void)
                  */
                 if (ret == DWT_ERROR) {
                     printk("err - tx_error1\n");
+                    APP_CLEAR;
                     continue;
                 }
 
@@ -235,7 +268,7 @@ void responder_thread(void)
                 while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & 
                     (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
                 { };
-
+                APP_CLEAR;
                 /* Increment frame sequence number after transmission of the 
                  * response message (modulo 256).
                  */
@@ -261,7 +294,7 @@ void responder_thread(void)
                      */
                     rx_buffer[ALL_MSG_SN_IDX] = 0;
                     if (memcmp(rx_buffer, rx_final_msg, ALL_MSG_COMMON_LEN) == 0) {
-
+                        APP_SET;
                         uint32_t poll_tx_ts, resp_rx_ts, final_tx_ts;
                         uint32_t poll_rx_ts_32, resp_tx_ts_32, final_rx_ts_32;
                         double Ra, Rb, Da, Db;
@@ -294,14 +327,14 @@ void responder_thread(void)
 
                         tof = tof_dtu * DWT_TIME_UNITS;
                         distance = tof * SPEED_OF_LIGHT;
-
+                        APP_CLEAR;
                         /* Display computed distance on console. */
                         sprintf(dist_str, "dist (%u): %3.2lf m\n",frame_seq_nb_rx, distance);
                         printk("%s", dist_str);
                     }
                 }
                 else {
-                    printk("error - rx2 failed  %08lx\n", status_reg);
+                    printk("error - rx2 failed  %08x\n", status_reg);
 
                     /* Clear RX error/timeout events in the DW1000 
                      * status register.
@@ -318,6 +351,10 @@ void responder_thread(void)
             dwt_write32bitreg(SYS_STATUS_ID,SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);//clear errors
             dwt_rxreset();
         }
+        uint32_t reg2 = dwt_read32bitreg(SYS_STATUS_ID);
+        printk("sequence(%u) over; reg1 = 0x%08x ; reg2 = 0x%08x\n",frame_seq_nb,reg1,reg2);
+        mp_status_print(reg2);
+        k_sleep(K_MSEC(100));
     }
 }
 

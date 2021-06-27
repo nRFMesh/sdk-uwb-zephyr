@@ -13,3 +13,4 @@ json mp_status_to_json(uint32 status_reg);
 json uwb_status_to_json(uint32 status_reg);
 
 void mp_start(dwt_config_t &config);
+void mp_status_print(uint32_t status_reg);
