@@ -43,6 +43,7 @@
 
 #define LOG_LEVEL 3
 #include <logging/log.h>
+//note that log level info produces more rx errors, not clear how to log tasks influences the runtime
 LOG_MODULE_REGISTER(main, LOG_LEVEL_ERR);
 
 //[N] P0.13 => M_PIN17 => J7 pin 8
@@ -71,7 +72,7 @@ static dwt_config_t config = {5, DWT_PRF_64M, DWT_PLEN_128, DWT_PAC8, 9, 9, 1, D
  */
 #define UUS_TO_DWT_TIME 65536
 
-#define POLL_RX_TO_RESP_TX_DLY_UUS 6000
+#define POLL_RX_TO_RESP_TX_DLY_UUS 1000
 #define RESP_TX_TO_FINAL_RX_DLY_UUS 500
 
 /* Speed of light in air, in metres per second. */
@@ -95,16 +96,14 @@ void responder_thread(void)
     uint32_t sequence = 0;
     while (1) {
         //APP_SET_CLEAR 
-        // - pulse1: 'pending 1st reception' ; 
-        // - pulse2: 'tx resp till rx final'
+        // - pulse1: 'request_at : start request resp_2 tx till sent' ; 
+        // - pulse2: 'receive : pending for receive final_3'
         // - pulse3: 'computing distance'
         uint32_t reg1 = mp_get_status();
         LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
-        APP_SET;
         mp_rx_now();
         msg_header_t rx_poll_msg;
         if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
-            APP_CLEAR;
             uint64_t poll_rx_ts = get_rx_timestamp_u64();
 
             mp_rx_after_tx(RESP_TX_TO_FINAL_RX_DLY_UUS);
@@ -117,7 +116,9 @@ void responder_thread(void)
                 };
             APP_SET;
             if(mp_request_at((uint8_t*)&tx_resp_msg, sizeof(msg_header_t), resp_tx_time)){
+                APP_CLEAR;
                 msg_twr_final_t final_msg;
+                APP_SET;
                 if(mp_receive(msg_id_t::twr_3_final,final_msg)){
                     APP_CLEAR;
                     k_sleep(K_USEC(10));
@@ -146,15 +147,13 @@ void responder_thread(void)
                     APP_CLEAR;
                 }
             }else{
+                APP_CLEAR;
                 LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
             }
-        }else{
-            APP_CLEAR;
         }
 
         uint32_t reg2 = mp_get_status();
         LOG_INF("responder> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
         sequence++;
-        k_sleep(K_MSEC(100));
     }
 }

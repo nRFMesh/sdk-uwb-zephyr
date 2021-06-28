@@ -59,7 +59,7 @@ void gpio_pin_init()
 }
 
 /* Inter-ranging delay period, in milliseconds. */
-#define RNG_DELAY_MS 1000
+#define RNG_DELAY_MS 500
 
 /* Default communication configuration. */
 static dwt_config_t config = {5,DWT_PRF_64M,DWT_PLEN_128,DWT_PAC8,9,9,1,DWT_BR_6M8,DWT_PHRMODE_EXT,(129)};
@@ -76,32 +76,36 @@ uint8_t responder_node_id       = 2;
 
 
 
+/*rx twr_2_resp after tx twr_1_poll
+ protected by responder's mp_request_at(twr_2_resp):POLL_RX_TO_RESP_TX_DLY_UUS
+*/
 #define POLL_TX_TO_RESP_RX_DLY_UUS 300
-#define RESP_RX_TO_FINAL_TX_DLY_UUS 4000
+
+#define RESP_RX_TO_FINAL_TX_DLY_UUS 1000
 
 #define STACKSIZE 2048
 
 void initiator_thread();
 K_THREAD_DEFINE(initiator_main, STACKSIZE, initiator_thread, NULL, NULL, NULL, 99, 0, 0);
-
+static uint32_t reg;//force read status
 void initiator_thread(void)
 {
 	gpio_pin_init();
 	APP_CLEAR;
-	APP_SET;
-	APP_CLEAR;
-    LOG_INF("initiator_thread> starting");
+    LOG_INF("initiator_thread> starting with status 0x%08x",reg);
 
     mp_start(config);
-
+	APP_SET;
+    reg = mp_get_status();//reading reg takes 40.75 us
+	APP_CLEAR;
 
     dwt_setleds(1);
     k_yield();
     uint8_t sequence = 0;
     while (1) {
         //APP_SET_CLEAR 
-        // - pulse1: 'tx 1st till rx resp' ; 
-        // - pulse2: 'tx final delayed till sent'
+        // - pulse1: 'request-receive : tx 1st till rx resp' ; 
+        // - pulse2: 'send_at : tx final delayed till sent'
         uint32_t reg1 = mp_get_status();
         LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
         mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);

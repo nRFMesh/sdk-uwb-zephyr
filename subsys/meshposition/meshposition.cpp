@@ -12,7 +12,7 @@
 #include <drivers/dw1000/deca_spi.h>
 #include <drivers/dw1000/port.h>
 
-LOG_MODULE_REGISTER(meshposition, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(meshposition, LOG_LEVEL_ERR);
 
 #define TX_ANT_DLY 16436
 #define RX_ANT_DLY 16436
@@ -161,7 +161,7 @@ void mp_start(dwt_config_t &config)
     port_set_dw1000_slowrate();
 
     if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-        LOG_ERR("dwt_initialise failed");
+        LOG_WRN("dwt_initialise failed");
         return;
     }
     port_set_dw1000_fastrate();
@@ -303,6 +303,7 @@ void recover_tx_errors()
 	uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
 	if(status & SYS_STATUS_TXERR)
 	{
+		LOG_INF("recovering TX errors 0x%08x", (status & SYS_STATUS_TXERR));
 		dwt_write8bitoffsetreg(SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8)SYS_CTRL_TRXOFF);
 	}
 }
@@ -333,13 +334,14 @@ bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time, uint8_t flag)
 		uint32_t reg2 = dwt_read32bitreg(SYS_STATUS_ID);
 		recover_tx_errors();
 		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
-		LOG_WRN("mp_send_at() - dwt_starttx() late ; reg1 = 0x%08x ; reg2 = 0x%08x; regnow = 0x%08x",reg1,reg2,status_reg);
-		uint32_t produced = (reg2 ^ reg1)&reg2;					//went from 0 to 1
-		uint32_t recovered = (!(status_reg ^ reg2))&(!status_reg);	//went from 1 to 0
-		LOG_WRN("produced = 0x%08x",produced);
-		mp_status_print(produced);
-		LOG_WRN("recovered = 0x%08x",recovered);
-		mp_status_print(recovered);
+		LOG_WRN("mp_send_at() - dwt_starttx() late");
+		LOG_WRN("reg1 = 0x%08x ; reg2 = 0x%08x; regnow = 0x%08x",reg1,reg2,status_reg);
+		//uint32_t produced = (reg2 ^ reg1)&reg2;					//went from 0 to 1
+		//uint32_t recovered = (!(status_reg ^ reg2))&(!status_reg);	//went from 1 to 0
+		//LOG_WRN("produced = 0x%08x",produced);
+		//mp_status_print(produced);
+		//LOG_WRN("recovered = 0x%08x",recovered);
+		//mp_status_print(recovered);
 		return false;
 	}
 }
