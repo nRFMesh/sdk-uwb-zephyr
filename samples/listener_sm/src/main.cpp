@@ -2,6 +2,8 @@
 #include <logging/log.h>
 #include <stdio.h>
 #include <usb/usb_device.h>
+
+#include <json.hpp>
 #include <simplemesh.h>
 #include <meshposition.h>
 
