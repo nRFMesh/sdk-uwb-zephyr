@@ -119,9 +119,10 @@ void listener_thread(void)
 	static dwt_config_t config = {5,DWT_PRF_64M,DWT_PLEN_128,DWT_PAC8,9,9,1,DWT_BR_6M8,DWT_PHRMODE_EXT,(129)};
 
 	mp_start(config);
-
 	mp_conf_to_json(config,jconfig);
-    printf("uwb config :\n%s\n",jconfig.dump(2).c_str());
+	mesh_bcast_json(jconfig);
+	std::string topic = sm_get_topic();
+	printf("uwb_config>%s\n",topic.c_str(),jconfig.dump().c_str());
 
 	int loop = 0;
     while (1) {
