@@ -51,7 +51,7 @@ void mp_status_print(uint32_t status_reg);
 
 void mp_start(dwt_config_t &config);
 uint32_t mp_get_status();
-void mp_rx_now();
+void mp_rx_now(uint16_t timeout = 0);
 void mp_rx_after_tx(uint32_t delay_us);
 
 void mp_request(msg_header_t &header);
@@ -69,3 +69,7 @@ bool mp_request_at(uint8_t* data, uint16_t size, uint64_t tx_time);
 uint32_t mp_poll_rx();
 uint64_t get_tx_timestamp_u64(void);
 uint64_t get_rx_timestamp_u64(void);
+
+//-------------------------------------  twr -------------------------------------
+void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder);
+void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder);

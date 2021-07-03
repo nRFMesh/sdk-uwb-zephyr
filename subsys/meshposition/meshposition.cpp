@@ -182,9 +182,9 @@ void mp_start(dwt_config_t &config)
  - After TX with a given delay 	mp_rx_after_tx()
  - At a given timestamp			not api provided. uses dwt_setdelayedtrxtime() and dwt_rxenable() with DWT_START_RX_DELAYED
 */
-void mp_rx_now()
+void mp_rx_now(uint16_t timeout)
 {
-	dwt_setrxtimeout(0); // 0 : disable timeout
+	dwt_setrxtimeout(timeout); // 0 : disable timeout
 	dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
