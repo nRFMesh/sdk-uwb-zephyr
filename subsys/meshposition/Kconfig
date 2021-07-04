@@ -6,3 +6,20 @@ menuconfig MESHPOSITION
 	depends on CPLUSPLUS
 	help
 	  Enable MESHPOSITION functionality.
+
+if MESHPOSITION
+
+	config MP_GPIO_DEBUG
+		bool "uwb and ranging gpio debug"
+		default n
+		help
+		Enable gpio debug for uwb and ranging debug
+
+	if MP_GPIO_DEBUG
+		config MP_PIN_APP
+			int "gpio debug for uwb app"
+			default 13
+			help
+			The default used pin is the DWM1001-Dev kit [nRF] P0.13 => M_PIN17 => J7 pin 8
+	endif # MP_GPIO_DEBUG
+endif # MESHPOSITION

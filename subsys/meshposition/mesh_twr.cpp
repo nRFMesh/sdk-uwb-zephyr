@@ -6,32 +6,23 @@
 #include <list>
 
 #include <logging/log.h>
-#include <sys/printk.h>
-
-#include <drivers/dw1000/deca_spi.h>
-#include <drivers/dw1000/port.h>
+#include <stdio.h>
 
 #include <drivers/gpio.h>
 
 LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 
-//#define GPIO_DEBUG
-#ifdef GPIO_DEBUG
-	//[N] P0.13 => M_PIN17 => J7 pin 8
-	#define DEBUG_PIN_APP 	 13
+#ifdef CONFIG_MP_GPIO_DEBUG
+	#include <drivers/gpio.h>
 
+	const struct device *twr_gpio_dev;
 	//0.625 us per toggle
-	#define APP_SET 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 1)	
-	#define APP_CLEAR 	gpio_pin_set(gpio_dev, DEBUG_PIN_APP, 0)
+	#define APP_SET 	gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 1)
+	#define APP_CLEAR 	gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 0)
 
-	const struct device *gpio_dev;
-	void gpio_pin_init()
+	void twr_gpio_init(const struct device *gpio_dev)
 	{
-		gpio_dev = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
-		int ret = gpio_pin_configure(gpio_dev, DEBUG_PIN_APP, GPIO_OUTPUT_ACTIVE);
-		if (ret < 0) {
-			LOG_ERR("gpio_pin_configure() failed");
-		}
+		twr_gpio_dev = gpio_dev;
 	}
 #else
 	#define APP_SET 	
@@ -66,14 +57,17 @@ LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder)
 {
 	//APP_SET_CLEAR 
-	// - pulse1: 'request_at : start request resp_2 tx till sent' ; 
-	// - pulse2: 'receive : pending for receive final_3'
-	// - pulse3: 'computing distance'
+	// - pulse1: '1st rx 	: entrance -> receive pending done' ; 
+	// - pulse2: 'request_at: start request resp_2 tx till sent' ; 
+	// - pulse3: 'final rx	: pending for receive final_3'
+	// - pulse4: 'computing : distance'
+	APP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_now(MAX_RX_TIMEOUT);
 	msg_header_t rx_poll_msg;
 	if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
+		APP_CLEAR;
 		if(rx_poll_msg.header.dest != dest_responder){
 			LOG_ERR("not for this node poll responder dest(%d) expected dest(%d)",rx_poll_msg.header.dest,dest_responder);
 			return;
@@ -119,7 +113,7 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 				APP_CLEAR;
 				char dist_str[30];
 				sprintf(dist_str, "responder> dist (%u): %3.2lf m\n",rx_poll_msg.header.sequence, distance);
-				printk("%s", dist_str);
+				printf("%s", dist_str);
 			}else{
 				LOG_WRN("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
 				APP_CLEAR;
@@ -128,6 +122,8 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 			APP_CLEAR;
 			LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
 		}
+	}else{
+		APP_CLEAR;
 	}
 
 	uint32_t reg2 = mp_get_status();
@@ -137,16 +133,18 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder)
 {
 	//APP_SET_CLEAR 
-	// - pulse1: 'request-receive : tx 1st till rx resp' ; 
-	// - pulse2: 'send_at : tx final delayed till sent'
+	// - pulse1: 'entrance : reg read and request start tx no-wait' ; 
+	// - pulse2: 'request-receive : tx 1st till rx resp' ; 
+	// - pulse3: 'send_at : tx final delayed till sent'
+	APP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);
 
 	msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, source_initiator , dest_responder,0};
-	APP_SET;
 	mp_request(twr_poll);
-
+	APP_CLEAR;
+	APP_SET;
 	if(mp_receive(msg_id_t::twr_2_resp))
 	{
 		APP_CLEAR;
@@ -167,7 +165,7 @@ void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 		if(mp_send_at((uint8_t*)&twr_final, sizeof(msg_twr_final_t), final_tx_time))
 		{
 			APP_CLEAR;
-			printk("initiator> success with frame %u\n", sequence);
+			printf("initiator> success with frame %u\n", sequence);
 			LOG_DBG("initiator> poll_tx= 0x%08llx ; resp_rx= 0x%08llx\n", poll_tx_ts, resp_rx_ts);
 			LOG_DBG("initiator> final_tx(ant)= 0x%08llx ; final_tx(chip)= 0x%04x\n", final_tx_ts, final_tx_time);
 		}else{

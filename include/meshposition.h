@@ -71,5 +71,8 @@ uint64_t get_tx_timestamp_u64(void);
 uint64_t get_rx_timestamp_u64(void);
 
 //-------------------------------------  twr -------------------------------------
+#ifdef CONFIG_MP_GPIO_DEBUG
+    void twr_gpio_init(const struct device *gpio_dev);
+#endif
 void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder);
 void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder);
