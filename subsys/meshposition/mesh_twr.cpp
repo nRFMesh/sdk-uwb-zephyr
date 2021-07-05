@@ -17,16 +17,16 @@ LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 
 	const struct device *twr_gpio_dev;
 	//0.625 us per toggle
-	#define APP_SET 	gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 1)
-	#define APP_CLEAR 	gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 0)
+	#define PIN_MP_SET 		gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 1)
+	#define PIN_MP_CLEAR 	gpio_pin_set(twr_gpio_dev, CONFIG_MP_PIN_APP, 0)
 
 	void twr_gpio_init(const struct device *gpio_dev)
 	{
 		twr_gpio_dev = gpio_dev;
 	}
 #else
-	#define APP_SET 	
-	#define APP_CLEAR 	
+	#define PIN_MP_SET
+	#define PIN_MP_CLEAR
 #endif
 
 //-------- responder params --------
@@ -56,18 +56,18 @@ LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 //starting this sequence waits for max 65 ms
 void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder)
 {
-	//APP_SET_CLEAR 
+	//PIN_MP_SET_CLEAR 
 	// - pulse1: '1st rx 	: entrance -> receive pending done' ; 
 	// - pulse2: 'request_at: start request resp_2 tx till sent' ; 
 	// - pulse3: 'final rx	: pending for receive final_3'
 	// - pulse4: 'computing : distance'
-	APP_SET;
+	PIN_MP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_now(MAX_RX_TIMEOUT);
 	msg_header_t rx_poll_msg;
 	if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
-		APP_CLEAR;
+		PIN_MP_CLEAR;
 		if(rx_poll_msg.header.dest != dest_responder){
 			LOG_ERR("not for this node poll responder dest(%d) expected dest(%d)",rx_poll_msg.header.dest,dest_responder);
 			return;
@@ -86,15 +86,15 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 				msg_id_t::twr_2_resp, (uint8_t)(rx_poll_msg.header.sequence + 1),
 				rx_poll_msg.header.dest , rx_poll_msg.header.source,0
 			};
-		APP_SET;
+		PIN_MP_SET;
 		if(mp_request_at((uint8_t*)&tx_resp_msg, sizeof(msg_header_t), resp_tx_time)){
-			APP_CLEAR;
+			PIN_MP_CLEAR;
 			msg_twr_final_t final_msg;
-			APP_SET;
+			PIN_MP_SET;
 			if(mp_receive(msg_id_t::twr_3_final,final_msg)){
-				APP_CLEAR;
+				PIN_MP_CLEAR;
 				k_sleep(K_USEC(10));
-				APP_SET;
+				PIN_MP_SET;
 				uint64_t resp_tx_ts  = get_tx_timestamp_u64();
 				uint64_t final_rx_ts = get_rx_timestamp_u64();
 
@@ -110,20 +110,20 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 
 				double tof = tof_dtu * DWT_TIME_UNITS;
 				double distance = tof * SPEED_OF_LIGHT;
-				APP_CLEAR;
+				PIN_MP_CLEAR;
 				char dist_str[30];
 				sprintf(dist_str, "responder> dist (%u): %3.2lf m\n",rx_poll_msg.header.sequence, distance);
 				printf("%s", dist_str);
 			}else{
 				LOG_WRN("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
-				APP_CLEAR;
+				PIN_MP_CLEAR;
 			}
 		}else{
-			APP_CLEAR;
+			PIN_MP_CLEAR;
 			LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
 		}
 	}else{
-		APP_CLEAR;
+		PIN_MP_CLEAR;
 	}
 
 	uint32_t reg2 = mp_get_status();
@@ -132,22 +132,22 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 
 void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder)
 {
-	//APP_SET_CLEAR 
+	//PIN_MP_SET_CLEAR 
 	// - pulse1: 'entrance : reg read and request start tx no-wait' ; 
 	// - pulse2: 'request-receive : tx 1st till rx resp' ; 
 	// - pulse3: 'send_at : tx final delayed till sent'
-	APP_SET;
+	PIN_MP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);
 
 	msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, source_initiator , dest_responder,0};
 	mp_request(twr_poll);
-	APP_CLEAR;
-	APP_SET;
+	PIN_MP_CLEAR;
+	PIN_MP_SET;
 	if(mp_receive(msg_id_t::twr_2_resp))
 	{
-		APP_CLEAR;
+		PIN_MP_CLEAR;
 		uint64_t poll_tx_ts = get_tx_timestamp_u64();// DWT_TIME
 		uint64_t resp_rx_ts = get_rx_timestamp_u64();// DWT_TIME
 		//tx res 9 bits (8 bits shit and 1 bit mask)
@@ -161,20 +161,20 @@ void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 		twr_final.poll_tx_ts = (uint32_t)poll_tx_ts;//trunc 64 bits to 32 bits
 		twr_final.resp_rx_ts = (uint32_t)resp_rx_ts;//trunc 64 bits to 32 bits
 		twr_final.final_tx_ts = (uint32_t)final_tx_ts;//trunc 64 bits to 32 bits
-		APP_SET;
+		PIN_MP_SET;
 		if(mp_send_at((uint8_t*)&twr_final, sizeof(msg_twr_final_t), final_tx_time))
 		{
-			APP_CLEAR;
+			PIN_MP_CLEAR;
 			printf("initiator> success with frame %u\n", sequence);
 			LOG_DBG("initiator> poll_tx= 0x%08llx ; resp_rx= 0x%08llx\n", poll_tx_ts, resp_rx_ts);
 			LOG_DBG("initiator> final_tx(ant)= 0x%08llx ; final_tx(chip)= 0x%04x\n", final_tx_ts, final_tx_time);
 		}else{
 			LOG_WRN("mp_send_at(twr_3_final) fail at sequence %u",sequence);
-			APP_CLEAR;
+			PIN_MP_CLEAR;
 		}
 	}else{
 		LOG_WRN("mp_receive(twr_2_resp) fail at sequence %u",sequence);
-		APP_CLEAR;
+		PIN_MP_CLEAR;
 	}
 	uint32_t reg2 = mp_get_status();
 	LOG_INF("initiator> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);

@@ -18,8 +18,8 @@ nrfjprog --reset --snr 760130128
 ```
 
 ## uwb json config
-- CBC216DC164B1DE8
-- 1CF6567337562176
+- 760130093 => CBC216DC164B1DE8
+- 760130128 => 1CF6567337562176
 request to node with uid
 `sm/1CF6567337562176{"dwt_config":{"chan":5}}`
 broadcast a channel for all
@@ -27,6 +27,7 @@ broadcast a channel for all
 
 broadcast to all nodes
 `sm{"twr_command":{"initiator":0,"responder":1}}`
+`sm{"twr_command":{"initiator":1,"responder":0}}`
 
 response on topic : `sm/E2F96EB1D7A476CC`
 ```json

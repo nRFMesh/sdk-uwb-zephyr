@@ -18,8 +18,8 @@ if MESHPOSITION
 	if MP_GPIO_DEBUG
 		config MP_PIN_APP
 			int "gpio debug for uwb app"
-			default 13
+			default 23
 			help
-			The default used pin is the DWM1001-Dev kit [nRF] P0.13 => M_PIN17 => J7 pin 8
+			The default used pin is the DWM1001-Dev kit [nRF] P0.23 => M_PIN16 => J7 pin 7
 	endif # MP_GPIO_DEBUG
 endif # MESHPOSITION
