@@ -121,11 +121,18 @@ void uwb_thread(void)
 			else if(uwb_cmd.compare("twr_command") == 0){
 				uint8_t initiator = j_uwb_cmd["initiator"];
 				uint8_t responder = j_uwb_cmd["responder"];
+				uint64_t rx_delta_ms = 0;
+				if(j_uwb_cmd.contains("at_ms")){
+					rx_delta_ms = j_uwb_cmd["at_ms"];
+				}
 				uint8_t this_node_id = sm_get_sid();
 				//responder starts first
 				if(responder == this_node_id){
-					twr_respond(cmd_count,initiator,responder);
+					sm_rx_delay_ms(rx_delta_ms);
+					twr_respond(cmd_count,initiator,responder,j_uwb_cmd);
+					mesh_bcast_json(j_uwb_cmd);
 				}else if(initiator == this_node_id){
+					sm_rx_delay_ms(rx_delta_ms);
 					twr_intiate(cmd_count,initiator,responder);
 				}
 				printf("uwb>twr_command done (%u)->(%u)\n",initiator,responder);

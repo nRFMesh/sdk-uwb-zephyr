@@ -26,7 +26,8 @@ broadcast a channel for all
 `sm{"dwt_config":{"chan":5}}`
 
 broadcast to all nodes
-`sm{"twr_command":{"initiator":0,"responder":1}}`
+`sm{"twr_command":{"initiator":0,"responder":1,"at_ms":50}}`
+`sm{"twr_command":{"initiator":0,"responder":1,"at_ms":100}}`
 `sm{"twr_command":{"initiator":1,"responder":0}}`
 
 response on topic : `sm/E2F96EB1D7A476CC`

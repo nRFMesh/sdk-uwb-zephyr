@@ -54,7 +54,7 @@ LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 #define MAX_RX_TIMEOUT 65535
 
 //starting this sequence waits for max 65 ms
-void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder)
+void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder,json &res)
 {
 	//PIN_MP_SET_CLEAR 
 	// - pulse1: '1st rx 	: entrance -> receive pending done' ; 
@@ -112,18 +112,22 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 				double distance = tof * SPEED_OF_LIGHT;
 				PIN_MP_CLEAR;
 				char dist_str[30];
-				sprintf(dist_str, "responder> dist (%u): %3.2lf m\n",rx_poll_msg.header.sequence, distance);
-				printf("%s", dist_str);
+				sprintf(dist_str, "%3.3lf",distance);
+				res["result"]["range"] = dist_str;
+				printf("responder> dist (%u): %s m\n", rx_poll_msg.header.sequence, dist_str);
 			}else{
 				LOG_WRN("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
+				res["result"]["error"] = "twr_3_final_failed";
 				PIN_MP_CLEAR;
 			}
 		}else{
 			PIN_MP_CLEAR;
 			LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
+				res["result"]["error"] = "twr_2_resp_failed";
 		}
 	}else{
 		PIN_MP_CLEAR;
+		res["result"]["error"] = "mp_receive_1_failed";
 	}
 
 	uint32_t reg2 = mp_get_status();
