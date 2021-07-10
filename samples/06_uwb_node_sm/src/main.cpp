@@ -67,17 +67,29 @@ void app_gpio_init()
 	#endif
 }
 
+bool check_command(json &data, std::string command)
+{
+	if(data.contains(command)){
+		j_uwb_cmd = data[command];
+		uwb_cmd = command;
+		k_sem_give(&sem_uwb_cmd);
+		return true;
+	}else{
+		return false;
+	}
+}
+
 void rx_topic_json_handler(std::string &topic, json &data)
 {
-	if(data.contains("dwt_config")){
-		j_uwb_cmd = data["dwt_config"];
-		uwb_cmd = "dwt_config";
+	if(check_command(data,"dwt_config")){
 		k_sem_give(&sem_uwb_cmd);//giving sem to higher prio
 	}
-	else if(data.contains("twr_command")){
-		j_uwb_cmd = data["twr_command"];
-		uwb_cmd = "twr_command";
-		k_sem_give(&sem_uwb_cmd);
+	else if(check_command(data,"twr_command")){
+		k_sem_give(&sem_uwb_cmd);//giving sem to higher prio
+	}else if(is_self(topic)){
+		if(check_command(data,"rf_diag")){
+			sm_diag(data);//giving sem to higher prio
+		}
 	}
 }
 
@@ -127,6 +139,7 @@ void uwb_thread(void)
 				}
 				uint8_t this_node_id = sm_get_sid();
 				//responder starts first
+				//TODO disable RF ISR during TWR operation
 				if(responder == this_node_id){
 					sm_rx_delay_ms(rx_delta_ms);
 					twr_respond(cmd_count,initiator,responder,j_uwb_cmd);

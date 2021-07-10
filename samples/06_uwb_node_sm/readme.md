@@ -17,18 +17,28 @@ nrfjprog --reset --snr 760130093
 nrfjprog --reset --snr 760130128
 ```
 
-## uwb json config
+### uwb config
 - 760130093 => CBC216DC164B1DE8
 - 760130128 => 1CF6567337562176
 request to node with uid
 `sm/1CF6567337562176{"dwt_config":{"chan":5}}`
 broadcast a channel for all
 `sm{"dwt_config":{"chan":5}}`
+### diganosis
+`sm/1CF6567337562176{"rf_diag":"ping"}`
+`sm/1CF6567337562176{"rf_diag":"target_ping","target":"CBC216DC164B1DE8"}`
 
+
+`sm/1CF6567337562176{"uwb_diag":{"initiator":0,"responder":1,"at_ms":100}}`
+
+
+### twr commands
 broadcast to all nodes
 `sm{"twr_command":{"initiator":0,"responder":1,"at_ms":50}}`
 `sm{"twr_command":{"initiator":0,"responder":1,"at_ms":100}}`
 `sm{"twr_command":{"initiator":1,"responder":0}}`
+
+
 
 response on topic : `sm/E2F96EB1D7A476CC`
 ```json
