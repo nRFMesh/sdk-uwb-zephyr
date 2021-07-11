@@ -1,58 +1,44 @@
 # Listener Simple Mesh
 ## usage
 ```bash
-west build -t guiconfig -b decawave_dwm1001_dev
-
 west build -b decawave_dwm1001_dev -- -DCONF_FILE=prj.conf
 west build -b decawave_dwm1001_dev -- -DCONF_FILE="prj.conf overlay-debug.conf"
 west build -b decawave_dwm1001_dev -- -DCONF_FILE="prj.conf overlay-tracing.conf"
 west build -b decawave_dwm1001_dev -- -DCONF_FILE="prj.conf overlay-usb.conf"
 
+west build -t guiconfig -b decawave_dwm1001_dev
+
 west flash
 
 west flash --snr 760130093
 west flash --snr 760130128
+west flash --snr 760130140
 
 nrfjprog --reset --snr 760130093
 nrfjprog --reset --snr 760130128
 ```
 
-### uwb config
 - 760130093 => CBC216DC164B1DE8
 - 760130128 => 1CF6567337562176
-request to node with uid
-`sm/1CF6567337562176{"dwt_config":{"chan":5}}`
-broadcast a channel for all
-`sm{"dwt_config":{"chan":5}}`
-### diganosis
-`sm/1CF6567337562176{"rf_diag":"ping"}`
-`sm/1CF6567337562176{"rf_diag":"target_ping","target":"CBC216DC164B1DE8"}`
+### commands
+```shell
+sm/1CF6567337562176{"uwb_cmd":"config","chan":5}
+sm{"uwb_cmd":"config","chan":5}
 
+sm/1CF6567337562176{"rf_cmd":"ping"}
+sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
+sm/E8D81FEE52C283EB{"rf_cmd":"ping"}
 
-`sm/1CF6567337562176{"uwb_diag":{"initiator":0,"responder":1,"at_ms":100}}`
+sm{"uwb_cmd":"twr","initiator":0,"responder":1,"at_ms":100}
+sm{"uwb_cmd":"twr","initiator":0,"responder":3,"at_ms":100}
 
+sm{"uwb_cmd":"twr","initiator":0,"responder":1,"at_ms":100,"count":3,"count_ms":20}
 
-### twr commands
-broadcast to all nodes
-`sm{"twr_command":{"initiator":0,"responder":1,"at_ms":50}}`
-`sm{"twr_command":{"initiator":0,"responder":1,"at_ms":100}}`
-`sm{"twr_command":{"initiator":1,"responder":0}}`
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,2],"at_ms":100,"step_ms":5}
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,2],"at_ms":100,"step_ms":5,"count":3,"count_ms":50}
 
+sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100}
+sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100,"count":10,"count_ms":20}
 
-
-response on topic : `sm/E2F96EB1D7A476CC`
-```json
-{
-    "chan":5,
-    "dataRate":"DWT_BR_6M8",
-    "nsSFD":"NonStandard",
-    "phrMode":"DWT_PHRMODE_EXT",
-    "prf":"DWT_PRF_64M",
-    "rxCode":9,
-    "rxPAC":"DWT_PAC8",
-    "sfdTO":129,
-    "txCode":9,
-    "txPreambLength":"DWT_PLEN_128"
-}
 ```
 

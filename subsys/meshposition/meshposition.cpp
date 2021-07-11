@@ -174,7 +174,7 @@ void mp_start(dwt_config_t &config)
 	inverse_map(map_rxPAC,invmap_rxPAC);
 	inverse_map(map_txPreambLength,invmap_dataRate);
 
-    dwt_setleds(1);
+    dwt_setleds(0);
 }
 
 /* RX can be started
@@ -298,6 +298,14 @@ void mp_request(msg_header_t &message)
 	mp_request((uint8_t*)&message,(uint16_t)sizeof(msg_header_t));
 }
 
+//no response expected
+void mp_send(uint8_t* data, uint16_t size)
+{
+	dwt_writetxdata(size, data, 0); 
+	dwt_writetxfctrl(size, 0, 1); 
+	dwt_starttx(DWT_START_TX_IMMEDIATE);
+}
+
 void recover_tx_errors()
 {
 	uint32_t status = dwt_read32bitreg(SYS_STATUS_ID);
@@ -336,12 +344,6 @@ bool mp_send_at(uint8_t* data, uint16_t size, uint64_t tx_time, uint8_t flag)
 		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
 		LOG_WRN("mp_send_at() - dwt_starttx() late");
 		LOG_WRN("reg1 = 0x%08x ; reg2 = 0x%08x; regnow = 0x%08x",reg1,reg2,status_reg);
-		//uint32_t produced = (reg2 ^ reg1)&reg2;					//went from 0 to 1
-		//uint32_t recovered = (!(status_reg ^ reg2))&(!status_reg);	//went from 1 to 0
-		//LOG_WRN("produced = 0x%08x",produced);
-		//mp_status_print(produced);
-		//LOG_WRN("recovered = 0x%08x",recovered);
-		//mp_status_print(recovered);
 		return false;
 	}
 }

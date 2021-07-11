@@ -183,3 +183,49 @@ void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 	uint32_t reg2 = mp_get_status();
 	LOG_INF("initiator> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
 }
+
+void uwb_ping(uint8_t sequence,uint8_t pinger,uint8_t target)
+{
+	PIN_MP_SET;
+	msg_header_t ping = {msg_id_t::ping, sequence, pinger , target,0};
+	k_busy_wait(100);//allow reception to start
+	mp_send((uint8_t*)&ping,sizeof(msg_header_t));
+	uint32_t reg2 = mp_get_status();
+	LOG_INF("uwb_ping> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
+	PIN_MP_CLEAR;
+}
+
+void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
+{
+	PIN_MP_SET;
+	mp_rx_now(MAX_RX_TIMEOUT);
+	msg_header_t rx_ping_msg;
+	if(mp_receive(msg_id_t::ping,rx_ping_msg)){
+		if(rx_ping_msg.header.dest != target){
+			LOG_ERR("ping target mismatch target(%d) expected target(%d)",rx_ping_msg.header.dest,target);
+			return;
+		}
+		if(rx_ping_msg.header.source != pinger){
+			LOG_ERR("ping source mismatch pinger(%d) expected pinger(%d)",rx_ping_msg.header.source,pinger);
+			return;
+		}
+		
+		dwt_rxdiag_t rx_diag;
+		dwt_readdiagnostics(&rx_diag);
+		res["diag"]["stdNoise"] = rx_diag.stdNoise;
+		res["diag"]["maxNoise"] = rx_diag.maxNoise;
+		res["diag"]["rxPreamCount"] = rx_diag.rxPreamCount;
+		res["diag"]["maxGrowthCIR"] = rx_diag.maxGrowthCIR;
+		res["diag"]["fpAmp1"] = rx_diag.firstPathAmp1;
+		res["diag"]["fpAmp2"] = rx_diag.firstPathAmp2;
+		res["diag"]["fpAmp3"] = rx_diag.firstPathAmp3;
+		printf("uwb_ping_rx> dist (%u)\n", rx_ping_msg.header.sequence);
+
+	}else{
+		res["diag"]["error"] = "mp_receive_ping_failed";
+	}
+
+	uint32_t reg2 = mp_get_status();
+	LOG_INF("responder> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
+	PIN_MP_CLEAR;
+}
