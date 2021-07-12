@@ -113,21 +113,21 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 				PIN_MP_CLEAR;
 				char dist_str[30];
 				sprintf(dist_str, "%3.3lf",distance);
-				res["result"]["range"] = dist_str;
+				res["range"] = dist_str;
 				printf("responder> dist (%u): %s m\n", rx_poll_msg.header.sequence, dist_str);
 			}else{
 				LOG_WRN("mp_receive(twr_3_final) fail at rx frame %u",rx_poll_msg.header.sequence);
-				res["result"]["error"] = "twr_3_final_failed";
+				res["error"] = "twr_3_final_failed";
 				PIN_MP_CLEAR;
 			}
 		}else{
 			PIN_MP_CLEAR;
 			LOG_WRN("mp_request_at(twr_2_resp) fail at rx frame %u",rx_poll_msg.header.sequence);
-				res["result"]["error"] = "twr_2_resp_failed";
+				res["error"] = "twr_2_resp_failed";
 		}
 	}else{
 		PIN_MP_CLEAR;
-		res["result"]["error"] = "mp_receive_1_failed";
+		res["error"] = "mp_receive_1_failed";
 	}
 
 	uint32_t reg2 = mp_get_status();
@@ -192,6 +192,7 @@ void uwb_ping(uint8_t sequence,uint8_t pinger,uint8_t target)
 	mp_send((uint8_t*)&ping,sizeof(msg_header_t));
 	uint32_t reg2 = mp_get_status();
 	LOG_INF("uwb_ping> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
+	printf("uwb_ping> seq(%u)\n", sequence);
 	PIN_MP_CLEAR;
 }
 
@@ -219,7 +220,8 @@ void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 		res["diag"]["fpAmp1"] = rx_diag.firstPathAmp1;
 		res["diag"]["fpAmp2"] = rx_diag.firstPathAmp2;
 		res["diag"]["fpAmp3"] = rx_diag.firstPathAmp3;
-		printf("uwb_ping_rx> dist (%u)\n", rx_ping_msg.header.sequence);
+		//res["seq"] = rx_ping_msg.header.sequence;
+		printf("uwb_ping_rx> seq(%u)->(%u)\n", rx_ping_msg.header.sequence,sequence);
 
 	}else{
 		res["diag"]["error"] = "mp_receive_ping_failed";

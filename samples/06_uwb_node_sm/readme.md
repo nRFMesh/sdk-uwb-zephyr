@@ -34,11 +34,13 @@ sm{"uwb_cmd":"twr","initiator":0,"responder":3,"at_ms":100}
 
 sm{"uwb_cmd":"twr","initiator":0,"responder":1,"at_ms":100,"count":3,"count_ms":20}
 
-sm{"uwb_cmd":"twr","initiator":0,"responders":[1,2],"at_ms":100,"step_ms":5}
-sm{"uwb_cmd":"twr","initiator":0,"responders":[1,2],"at_ms":100,"step_ms":5,"count":3,"count_ms":50}
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,1],"at_ms":100,"step_ms":10}
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,2],"at_ms":100,"step_ms":10}
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,1],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}
+sm{"uwb_cmd":"twr","initiator":0,"responders":[1,1],"at_ms":100,"step_ms":10,"count":10,"count_ms":50}
 
 sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100}
-sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100,"count":10,"count_ms":20}
+sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100,"count":30,"count_ms":6}
 
 ```
 

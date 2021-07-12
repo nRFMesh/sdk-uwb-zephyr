@@ -8,7 +8,7 @@
 #include <meshposition.h>
 
 #include <string>
-#include <map>
+#include <vector>
 
 std::string uid,uwb_cmd;
 json j_uwb_cmd,jconfig,jresponse;
@@ -94,26 +94,61 @@ void mesh_start()
 	printf("sm> %s\n",j_mesh_state.dump().c_str());
 }
 
+uint64_t get_default(json &data,const char*field,uint64_t default_val)
+{
+	if(data.contains(field)){
+		return data[field];
+	}else{
+		return default_val;
+	}
+}
+
 void command_twr(json &data,int sequence)
 {
-	uint8_t initiator = data["initiator"];
-	uint8_t responder = data["responder"];
-	uint64_t rx_delta_ms = 0;
-	if(data.contains("at_ms")){
-		rx_delta_ms = data["at_ms"];
+	if(data.contains("initiator")){
+		data["initiators"].push_back(data["initiator"]);
 	}
-	uint8_t this_node_id = sm_get_sid();
-	//responder starts first
-	//TODO disable RF ISR during TWR operation
-	if(responder == this_node_id){
-		sm_rx_sync_ms(rx_delta_ms);
-		twr_respond(sequence,initiator,responder,data);
-		mesh_bcast_json(data);
-	}else if(initiator == this_node_id){
-		sm_rx_sync_ms(rx_delta_ms);
-		twr_intiate(sequence,initiator,responder);
+	if(data.contains("responder")){
+		data["responders"].push_back(data["responder"]);
 	}
-	printf("uwb>twr_command done (%u)->(%u)\n",initiator,responder);
+	uint64_t rx_delta_ms 	= get_default(data,"at_ms",0);
+	uint64_t count 			= get_default(data,"count",1);
+	uint64_t count_ms 		= get_default(data,"count_ms",0);
+	uint64_t step_ms 		= get_default(data,"step_ms",0);
+	uint8_t this_node_id	= sm_get_sid();
+	sm_stop_rx();
+	int64_t start = sm_rx_sync_ms(rx_delta_ms);
+	int lseq = 0;//local sequence for the whole request including all counts
+	for(uint64_t i=0;i<count;i++){
+		if((i!=0) && (count_ms!=0)){
+			start = sm_sync_ms(start,count_ms);
+		}
+		uint64_t j = 0;
+		int64_t step_time = start;
+		for(const auto& initiator: data["initiators"]){
+			for(const auto& responder: data["responders"]){
+				if((j!=0) && (step_ms!=0)){
+					step_time = sm_sync_ms(step_time,step_ms);
+				}
+				if(responder == this_node_id){
+					twr_respond(lseq,initiator,responder,jresponse);
+					jresponse["uwb_cmd"] = "twr";
+					jresponse["initiator"] = initiator;
+					jresponse["responder"] = responder;
+					jresponse["seq"] = lseq;
+					mesh_bcast_json(jresponse);
+					jresponse.clear();
+					k_sleep(K_MSEC(1));//to handle Tx by RF thread
+				}else if(initiator == this_node_id){
+					twr_intiate(lseq,initiator,responder);
+				}
+				j++;
+				lseq++;
+			}
+		}
+	}
+	sm_start_rx();
+	printf("uwb>twr_command done\n");
 }
 
 void command_ping(json &data,int sequence)
@@ -133,6 +168,7 @@ void command_ping(json &data,int sequence)
 		count_ms = data["count_ms"];
 	}
 	uint8_t this_node_id = sm_get_sid();
+	sm_stop_rx();
 	if(target == this_node_id){
 		int64_t start = sm_rx_sync_ms(rx_delta_ms);
 		for(uint64_t i=0;i<count;i++){
@@ -142,6 +178,8 @@ void command_ping(json &data,int sequence)
 			uwb_ping_rx(sequence,pinger,target,jresponse);
 			jresponse["uwb_cmd"] = "ping";
 			mesh_bcast_json(jresponse);
+			jresponse.clear();
+			k_sleep(K_MSEC(1));//to handle Tx by RF thread
 		}
 	}else if(pinger == this_node_id){
 		int64_t start = sm_rx_sync_ms(rx_delta_ms);
@@ -152,6 +190,7 @@ void command_ping(json &data,int sequence)
 			uwb_ping(sequence,pinger,target);
 		}
 	}
+	sm_start_rx();
 	printf("uwb>twr_command done (%u)->(%u)\n",pinger,target);
 }
 
