@@ -88,10 +88,7 @@ void mesh_start()
 	sm_start();//assigns uid, sid
 	sm_set_callback_rx_json(rx_topic_json_handler);
 
-	json j_mesh_state;
-	j_mesh_state["simplemesh"] = "started";
-	mesh_bcast_json(j_mesh_state);
-	printf("sm> %s\n",j_mesh_state.dump().c_str());
+	printf("sm> started\n");
 }
 
 uint64_t get_default(json &data,const char*field,uint64_t default_val)
@@ -202,8 +199,7 @@ void uwb_thread(void)
 	static dwt_config_t config = {5,DWT_PRF_64M,DWT_PLEN_128,DWT_PAC8,9,9,1,DWT_BR_6M8,DWT_PHRMODE_EXT,(129)};
 	mp_start(config);
 	mp_conf_to_json(config,jconfig);
-	mesh_bcast_json(jconfig);
-	printf("dwt_config>%s\n",jconfig.dump().c_str());
+	printf("dwt_config>%s\n",jconfig.dump(2).c_str());
 
 	int cmd_count = 0;
     while (1) {

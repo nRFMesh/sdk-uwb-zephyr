@@ -24,14 +24,10 @@ LOG_MODULE_REGISTER(listener_main, LOG_LEVEL_DBG);
 void listener_thread();
 K_THREAD_DEFINE(listener_main, STACKSIZE, listener_thread, NULL, NULL, NULL, 99, 0, 0);
 
-void mesh_thread();
-K_THREAD_DEFINE(mesh_parser, STACKSIZE, mesh_thread, NULL, NULL, NULL, 80, 0, 0);
-
-
 void rx_topic_json_handler(std::string &topic, json &data)
 {
-	printk("topic = %s ; json :\n",topic.c_str());
-	printk("%s\n",data.dump(2).c_str());
+	int time_stamp = k_uptime_get();
+	printf("%d> %s %s\n",time_stamp,topic.c_str(),data.dump().c_str());
 	if(data.contains("dwt_config")){
 		for (auto& [key, value] : data["dwt_config"].items()) {
 			jconfig[key] = value;
@@ -40,7 +36,7 @@ void rx_topic_json_handler(std::string &topic, json &data)
 	}
 }
 
-void mesh_thread()
+void mesh_start()
 {
 	#ifdef CONFIG_USB
 		int ret;
@@ -51,22 +47,12 @@ void mesh_thread()
 		}
 	#endif
 
+	sm_start();
 	uid = sm_get_uid();
 	full_topic = sm_get_topic();
-	printk("mesh>Hello Simple Mesh from DWM1001 UID (%s)\n",uid.c_str());
-	printk("broadcasting on self topic (%s)\n",full_topic.c_str());
-
+	printf("mesh>simplemesh listener on DWM1001 UID (%s)\n",uid.c_str());
 	sm_set_callback_rx_json(rx_topic_json_handler);
-	sm_start();
 
-	int loop = 0;
-	while (1) {
-		j_mesh_state["mesh_loop"] = loop;
-		mesh_bcast_json(j_mesh_state);
-		printf("mesh> %s\n",j_mesh_state.dump().c_str());
-		k_sleep(K_SECONDS(10));
-		loop++;
-	}
 }
 
 
@@ -86,11 +72,10 @@ void print_time_buffer(uint8 *rx_buffer, uint16 len)
 	printf("\r\n");
 }
 
-void sniff_ms(int time)
+void sniff_ms(int time_sec)
 {
-    int start = k_uptime_get();
-    int finish = start + time;
-    printf("sniff> start(%d) -> finish(%d)\n",start,finish);
+    int start = k_uptime_get();//in msec
+    int finish = start + (time_sec*1000);
 
     while (k_uptime_get() < finish) {
 		memset(rx_buffer,0,FRAME_LEN_MAX);
@@ -108,7 +93,8 @@ void sniff_ms(int time)
         }
         else {
 			json jstat = mp_status_to_json(status_reg);
-            printf("sniff> 0x%04lX :\n%s\n",status_reg,jstat.dump(2).c_str());
+			int time_stamp = k_uptime_get();
+            printf("%d> 0x%04lX :\n%s\n",time_stamp,status_reg,jstat.dump(2).c_str());
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
         }
     }
@@ -118,11 +104,12 @@ void listener_thread(void)
 {
 	static dwt_config_t config = {5,DWT_PRF_64M,DWT_PLEN_128,DWT_PAC8,9,9,1,DWT_BR_6M8,DWT_PHRMODE_EXT,(129)};
 
+	mesh_start();
+
 	mp_start(config);
 	mp_conf_to_json(config,jconfig);
-	mesh_bcast_json(jconfig);
 	std::string topic = sm_get_topic();
-	printf("uwb_config>%s\n",topic.c_str(),jconfig.dump().c_str());
+	printf("uwb_config>%s %s\n",topic.c_str(),jconfig.dump().c_str());
 
 	int loop = 0;
     while (1) {
@@ -133,11 +120,8 @@ void listener_thread(void)
 			mesh_bcast_json(jconfig);
 			do_reconfigure = false;
 		}
-		j_uwb_state["uwb_loop"] = loop;
-		mesh_bcast_json(j_uwb_state);
-		printf("listener> %s\n",j_uwb_state.dump().c_str());
 		k_sleep(K_MSEC(100));
 		loop++;
-        sniff_ms(k_ms_to_ticks_floor32(5000));
+        sniff_ms(30);
     }
 }
