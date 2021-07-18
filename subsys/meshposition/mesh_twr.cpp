@@ -231,3 +231,11 @@ void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 	LOG_INF("responder> sequence(%u) over; statusreg = 0x%08x",sequence,reg2);
 	PIN_MP_CLEAR;
 }
+
+void uwb_cir_acc(uint8_t* buffer, uint8_t length,uint16_t offset)
+{
+	PIN_MP_SET;
+	dwt_readaccdata(buffer, length, offset);
+	printf("uwb_cir_acc> bcast (%u) data\n", length);
+	PIN_MP_CLEAR;
+}

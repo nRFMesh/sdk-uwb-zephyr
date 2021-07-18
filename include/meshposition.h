@@ -74,6 +74,7 @@ uint64_t get_rx_timestamp_u64(void);
 //-------------------------------------  twr -------------------------------------
 void uwb_ping(uint8_t sequence,uint8_t pinger,uint8_t target);
 void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res);
+void uwb_cir_acc(uint8_t* buffer, uint8_t length,uint16_t offset);
 
 #ifdef CONFIG_MP_GPIO_DEBUG
     void twr_gpio_init(const struct device *gpio_dev);

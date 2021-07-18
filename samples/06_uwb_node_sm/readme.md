@@ -35,8 +35,6 @@ sm/E8D81FEE52C283EB{"rf_cmd":"ping"}
 sm/CBC216DC164B1DE8{"rf_cmd":"sid"}
 sm/CBC216DC164B1DE8{"rf_cmd":"sid","sid":1}
 
-
-
 ```
 
 ### uwb commands
@@ -69,6 +67,8 @@ sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100,"count":3,"count_ms":6}
 sm{"uwb_cmd":"ping", "pinger":4,"target":1,"at_ms":100}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}
+
+sm/1CF6567337562176{"uwb_cmd":"cir_acc","offset":0,"lenght":200}
 
 ```
 

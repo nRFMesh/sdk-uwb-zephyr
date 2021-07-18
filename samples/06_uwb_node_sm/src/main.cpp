@@ -226,6 +226,12 @@ void uwb_thread(void)
 				command_twr(j_uwb_cmd,cmd_count);
 			}else if(uwb_cmd.compare("ping") == 0){
 				command_ping(j_uwb_cmd,cmd_count);
+			}else if(uwb_cmd.compare("cir_acc") == 0){
+				uint16_t offset = j_uwb_cmd["offset"];
+				uint8_t length = j_uwb_cmd["lenght"];
+				uint8_t buffer[length+1];
+				uwb_cir_acc(buffer,offset,length+1);//read one more : DW1000_Software_API_Guide
+				mesh_bcast_data(buffer+1,length);//skip one dummy : DW1000_Software_API_Guide
 			}
 			cmd_count++;
 		}
