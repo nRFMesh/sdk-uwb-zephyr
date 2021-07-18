@@ -2,6 +2,7 @@
 #include <logging/log.h>
 #include <stdio.h>
 #include <usb/usb_device.h>
+#include <sys/reboot.h>
 
 #include <json.hpp>
 #include <simplemesh.h>
@@ -14,7 +15,7 @@ std::string uid,uwb_cmd;
 json j_uwb_cmd,jconfig,jresponse;
 bool do_reconfigure = false;
 const uint32_t g_mesh_alive_loop_sec = 20;
-
+extern bool critical_parse;
 
 #define STACKSIZE 4096
 LOG_MODULE_REGISTER(uwb_main, LOG_LEVEL_DBG);
@@ -77,13 +78,19 @@ void rx_topic_json_handler(std::string &topic, json &data)
 		if(is_self(topic)){
 			sm_diag(data);//giving sem to higher prio
 		}
+	}else if(data.contains("sys_cmd")){
+		if(is_self(topic)){
+			if(data["sys_cmd"] == "reboot"){
+				sys_reboot(SYS_REBOOT_WARM);//param unused on ARM-M
+			}
+		}
 	}
 }
 
 void mesh_start()
 {
 	std::string uid = sm_get_uid();
-	printk("sm>DWM1001-Dev nRF-UID (%s)\n",uid.c_str());
+	printf("sm>DWM1001-Dev nRF-UID (%s)\n",uid.c_str());
 
 	sm_start();//assigns uid, sid
 	sm_set_callback_rx_json(rx_topic_json_handler);
@@ -221,6 +228,9 @@ void uwb_thread(void)
 				command_ping(j_uwb_cmd,cmd_count);
 			}
 			cmd_count++;
+		}
+		if(critical_parse){
+			sys_reboot(SYS_REBOOT_WARM);//param unused on ARM-M
 		}
     }
 }

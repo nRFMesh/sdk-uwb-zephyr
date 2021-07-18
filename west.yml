@@ -36,7 +36,7 @@ manifest:
     - name: hsm
       repo-path: sdk-hsm-sensortag
       remote: hsm
-      revision: 451cc6bf4dab4bb923547bb9bd73e789257550e8
+      revision: 42e746d68f53f2115285043275db1adc00fc8baf
       path: modules/lib/simplemesh
 
   self:

@@ -12,7 +12,6 @@ west flash
 
 west flash --snr 760130093
 west flash --snr 760130128
-west flash --snr 760130140
 
 nrfjprog --reset --snr 760130093
 nrfjprog --reset --snr 760130128
@@ -20,7 +19,27 @@ nrfjprog --reset --snr 760130128
 
 - 760130093 => CBC216DC164B1DE8
 - 760130128 => 1CF6567337562176
-### commands
+### sys commands
+```shell
+sm/CBC216DC164B1DE8{"sys_cmd":"reboot"}
+
+
+```
+
+### rf commands
+```shell
+sm/CBC216DC164B1DE8{"rf_cmd":"ping"}
+sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
+sm/E8D81FEE52C283EB{"rf_cmd":"ping"}
+
+sm/CBC216DC164B1DE8{"rf_cmd":"sid"}
+sm/CBC216DC164B1DE8{"rf_cmd":"sid","sid":1}
+
+
+
+```
+
+### uwb commands
 ```shell
 get:
 sm/1CF6567337562176{"uwb_cmd":"config"}
@@ -47,7 +66,6 @@ sm{"uwb_cmd":"twr","initiator":0,"responders":[1,1],"at_ms":100,"step_ms":10,"co
 sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100}
 sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100,"count":3,"count_ms":6}
 
-sm/90A971A3D1A1B648{"rf_cmd":"target_ping","target":"98501ED22B42EB41"}
 sm{"uwb_cmd":"ping", "pinger":4,"target":1,"at_ms":100}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}
