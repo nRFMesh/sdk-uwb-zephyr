@@ -74,18 +74,18 @@ sm{"uwb_cmd":"ping", "pinger":4,"target":1,"at_ms":100}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}
 
-sm/CBC216DC164B1DE8{"uwb_cmd":"cir_acc"}
-
 sm{"uwb_cmd":"twr","initiator":0,"responders":[1],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"twr","initiator":1,"responders":[8,2,7,3,9,5,4,6],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"ping", "pinger":6,"target":5,"at_ms":100}
 
-sm{"uwb_cmd":"ping", "pinger":0,"target":1,"at_ms":100}
 
-0:
+sm{"uwb_cmd":"ping", "pinger":2,"target":1,"at_ms":100}
+resp
+sm/1CF6567337562176{"uwb_cmd":"cir_acc"}
+
+pinger 
+sm/530BE91D3559D690{"rf_cmd":"ping"}
+
+target 
 sm/1CF6567337562176{"rf_cmd":"ping"}
-
-1:
-sm/CBC216DC164B1DE8{"rf_cmd":"ping"}
 ```
-

@@ -13,7 +13,7 @@
 
 LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
 
-#define acc_read_bytes 4064
+#define acc_read_bytes 4064+1
 uint8_t acc_buffer[acc_read_bytes];//1016 x 4 +1
 
 #ifdef CONFIG_MP_GPIO_DEBUG
@@ -239,13 +239,30 @@ void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 
 void uwb_cir_acc(uint8_t source)
 {
-	PIN_MP_SET;
 	printf("uwb_cir_acc> calling dwt function\n");
-	const uint16_t test_read_size = 200;
-	dwt_readaccdata(acc_buffer, test_read_size+1, 0);//offset 0
+	const uint16_t read_size_total = 4064;
+	const uint16_t read_size_section = 200;
+
+	PIN_MP_SET;
+	uint8_t under_dummy_backup = 0;
+	for(int i=0;i<20;i++){
+		uint16_t offset = read_size_section*i;
+		under_dummy_backup = acc_buffer[offset];
+		dwt_readaccdata(acc_buffer+offset, read_size_section+1, offset);
+		acc_buffer[offset] = under_dummy_backup;
+	}
+	uint16_t offset = 20*200;
+	under_dummy_backup = acc_buffer[offset];
+	dwt_readaccdata(acc_buffer+offset, 64+1, offset);//last 64 from 4064
+	acc_buffer[offset] = under_dummy_backup;
+	PIN_MP_CLEAR;
+
 	uint8_t dest = source;//response dest = request source
 	printf("uwb_cir_acc> sending file \n");
-	mesh_send_file("uwb_cir_acc",dest,acc_buffer+1,test_read_size);
-	printf("uwb_cir_acc> bcast data %u bytes\n", test_read_size);
+
+	PIN_MP_SET;
+		mesh_send_file("uwb_cir_acc",dest,acc_buffer+1,read_size_total);
 	PIN_MP_CLEAR;
+
+	printf("uwb_cir_acc> file with %u bytes sent\n", read_size_total);
 }
