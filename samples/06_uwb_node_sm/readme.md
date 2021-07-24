@@ -83,9 +83,9 @@ sm{"uwb_cmd":"ping", "pinger":2,"target":1,"at_ms":100}
 resp
 sm/1CF6567337562176{"uwb_cmd":"cir_acc"}
 
-pinger 
+pinger 2
 sm/530BE91D3559D690{"rf_cmd":"ping"}
 
-target 
+target 1
 sm/1CF6567337562176{"rf_cmd":"ping"}
 ```

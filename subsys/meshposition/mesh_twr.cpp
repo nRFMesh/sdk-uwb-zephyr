@@ -218,6 +218,7 @@ void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 		
 		dwt_rxdiag_t rx_diag;
 		dwt_readdiagnostics(&rx_diag);
+		res["diag"]["firstPath"] = rx_diag.firstPath;
 		res["diag"]["stdNoise"] = rx_diag.stdNoise;
 		res["diag"]["maxNoise"] = rx_diag.maxNoise;
 		res["diag"]["rxPreamCount"] = rx_diag.rxPreamCount;
