@@ -29,6 +29,11 @@ sm/CBC216DC164B1DE8{"sys_cmd":"reboot"}
 ### rf commands
 ```shell
 sm/CBC216DC164B1DE8{"rf_cmd":"ping"}
+sm/Tag{"rf_cmd":"ping"}
+sm/2{"rf_cmd":"ping"}
+
+sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
+
 sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
 sm/E8D81FEE52C283EB{"rf_cmd":"ping"}
 
@@ -68,7 +73,7 @@ sm{"uwb_cmd":"ping", "pinger":4,"target":1,"at_ms":100}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10}
 sm{"uwb_cmd":"twr","initiator":4,"responders":[0,1,2,3],"at_ms":100,"step_ms":10,"count":3,"count_ms":50}
 
-sm/1CF6567337562176{"uwb_cmd":"cir_acc","offset":0,"lenght":200}
+sm/CBC216DC164B1DE8{"uwb_cmd":"cir_acc"}
 
 ```
 

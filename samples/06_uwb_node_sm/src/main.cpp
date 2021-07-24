@@ -13,11 +13,12 @@
 
 std::string uid,uwb_cmd;
 json j_uwb_cmd,jconfig,jresponse;
+uint8_t source_uwb_cmd;
 bool do_reconfigure = false;
 const uint32_t g_mesh_alive_loop_sec = 20;
 extern bool critical_parse;
 
-#define STACKSIZE 4096
+#define STACKSIZE 8192
 LOG_MODULE_REGISTER(uwb_main, LOG_LEVEL_DBG);
 
 void uwb_thread();
@@ -68,8 +69,9 @@ void app_gpio_init()
 	#endif
 }
 
-void rx_topic_json_handler(std::string &topic, json &data)
+void rx_topic_json_handler(uint8_t source, std::string &topic, json &data)
 {
+	source_uwb_cmd = source;
 	if(data.contains("uwb_cmd")){
 		uwb_cmd = data["uwb_cmd"];
 		j_uwb_cmd = data;
@@ -227,11 +229,8 @@ void uwb_thread(void)
 			}else if(uwb_cmd.compare("ping") == 0){
 				command_ping(j_uwb_cmd,cmd_count);
 			}else if(uwb_cmd.compare("cir_acc") == 0){
-				uint16_t offset = j_uwb_cmd["offset"];
-				uint8_t length = j_uwb_cmd["lenght"];
-				uint8_t buffer[length+1];
-				uwb_cir_acc(buffer,offset,length+1);//read one more : DW1000_Software_API_Guide
-				mesh_bcast_data(buffer+1,length);//skip one dummy : DW1000_Software_API_Guide
+				printf("before cir_acc()\n");
+				uwb_cir_acc(source_uwb_cmd);//send acc to source read one more : DW1000_Software_API_Guide
 			}
 			cmd_count++;
 		}

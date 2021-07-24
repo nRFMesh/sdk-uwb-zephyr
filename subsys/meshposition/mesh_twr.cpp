@@ -1,6 +1,7 @@
 
 #include <zephyr.h>
 #include <meshposition.h>
+#include <simplemesh.h>
 #include <string>
 #include <map>
 #include <list>
@@ -11,6 +12,9 @@
 #include <drivers/gpio.h>
 
 LOG_MODULE_REGISTER(mesh_twr, LOG_LEVEL_ERR);
+
+#define acc_read_bytes 4064
+uint8_t acc_buffer[acc_read_bytes];//1016 x 4 +1
 
 #ifdef CONFIG_MP_GPIO_DEBUG
 	#include <drivers/gpio.h>
@@ -232,10 +236,15 @@ void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 	PIN_MP_CLEAR;
 }
 
-void uwb_cir_acc(uint8_t* buffer, uint8_t length,uint16_t offset)
+void uwb_cir_acc(uint8_t source)
 {
 	PIN_MP_SET;
-	dwt_readaccdata(buffer, length, offset);
-	printf("uwb_cir_acc> bcast (%u) data\n", length);
+	printf("uwb_cir_acc> calling dwt function\n");
+	const uint16_t test_read_size = 200;
+	dwt_readaccdata(acc_buffer, test_read_size+1, 0);//offset 0
+	uint8_t dest = source;//response dest = request source
+	printf("uwb_cir_acc> sending file \n");
+	mesh_send_file("uwb_cir_acc",dest,acc_buffer+1,test_read_size);
+	printf("uwb_cir_acc> bcast data %u bytes\n", test_read_size);
 	PIN_MP_CLEAR;
 }
