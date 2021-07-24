@@ -106,7 +106,7 @@ void responder_thread(void)
         if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
             uint64_t poll_rx_ts = get_rx_timestamp_u64();
 
-            mp_rx_after_tx(RESP_TX_TO_FINAL_RX_DLY_UUS);
+            mp_rx_after_tx(RESP_TX_TO_FINAL_RX_DLY_UUS,10000);
             
             uint32_t resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
 

@@ -188,12 +188,10 @@ void mp_rx_now(uint16_t timeout)
 	dwt_rxenable(DWT_START_RX_IMMEDIATE);
 }
 
-#define RX_TIMEOUT_UUS 10000
-
-void mp_rx_after_tx(uint32_t delay_us)
+void mp_rx_after_tx(uint32_t delay_us,uint16_t timeout)
 {
     dwt_setrxaftertxdelay(delay_us);
-    dwt_setrxtimeout(RX_TIMEOUT_UUS);
+    dwt_setrxtimeout(timeout);
 }
 
 uint32_t mp_poll_rx()

@@ -56,6 +56,7 @@ uint8_t acc_buffer[acc_read_bytes];//1016 x 4 +1
 #define RESP_RX_TO_FINAL_TX_DLY_UUS 1000
 
 #define MAX_RX_TIMEOUT 65535
+#define RX_TIMEOUT_1_MS 1000
 
 //starting this sequence waits for max 65 ms
 void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responder,json &res)
@@ -68,7 +69,7 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 	PIN_MP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
-	mp_rx_now(MAX_RX_TIMEOUT);
+	mp_rx_now(RX_TIMEOUT_1_MS);
 	msg_header_t rx_poll_msg;
 	if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
 		PIN_MP_CLEAR;
@@ -82,7 +83,7 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 		}
 		uint64_t poll_rx_ts = get_rx_timestamp_u64();
 
-		mp_rx_after_tx(RESP_TX_TO_FINAL_RX_DLY_UUS);
+		mp_rx_after_tx(RESP_TX_TO_FINAL_RX_DLY_UUS,RX_TIMEOUT_1_MS);
 		
 		uint32_t resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
 
@@ -147,7 +148,7 @@ void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 	PIN_MP_SET;
 	uint32_t reg1 = mp_get_status();
 	LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
-	mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);
+	mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS,RX_TIMEOUT_1_MS);
 
 	msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, source_initiator , dest_responder,0};
 	mp_request(twr_poll);
@@ -203,7 +204,7 @@ void uwb_ping(uint8_t sequence,uint8_t pinger,uint8_t target)
 void uwb_ping_rx(uint8_t sequence,uint8_t pinger,uint8_t target,json &res)
 {
 	PIN_MP_SET;
-	mp_rx_now(MAX_RX_TIMEOUT);
+	mp_rx_now(RX_TIMEOUT_1_MS);
 	msg_header_t rx_ping_msg;
 	if(mp_receive(msg_id_t::ping,rx_ping_msg)){
 		if(rx_ping_msg.header.dest != target){

@@ -52,7 +52,7 @@ void mp_status_print(uint32_t status_reg);
 void mp_start(dwt_config_t &config);
 uint32_t mp_get_status();
 void mp_rx_now(uint16_t timeout = 0);
-void mp_rx_after_tx(uint32_t delay_us);
+void mp_rx_after_tx(uint32_t delay_us,uint16_t timeout);
 
 void mp_request(msg_header_t &header);
 void mp_request(uint8_t* data, uint16_t size);

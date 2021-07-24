@@ -108,7 +108,7 @@ void initiator_thread(void)
         // - pulse2: 'send_at : tx final delayed till sent'
         uint32_t reg1 = mp_get_status();
         LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
-        mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS);
+        mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS,10000);
 
         msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, this_initiator_node_id , responder_node_id,0};
         APP_SET;

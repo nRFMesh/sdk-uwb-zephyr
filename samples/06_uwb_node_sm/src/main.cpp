@@ -123,18 +123,18 @@ void command_twr(json &data,int sequence)
 	uint64_t step_ms 		= get_default(data,"step_ms",0);
 	uint8_t this_node_id	= sm_get_sid();
 	sm_stop_rx();
-	int64_t start = sm_rx_sync_ms(rx_delta_ms);
+	int64_t start = sm_rx_sync_ms(sequence,rx_delta_ms);
 	int lseq = 0;//local sequence for the whole request including all counts
 	for(uint64_t i=0;i<count;i++){
 		if((i!=0) && (count_ms!=0)){
-			start = sm_sync_ms(start,count_ms);
+			start = sm_sync_ms(lseq,start,count_ms);
 		}
 		uint64_t j = 0;
 		int64_t step_time = start;
 		for(const auto& initiator: data["initiators"]){
 			for(const auto& responder: data["responders"]){
 				if((j!=0) && (step_ms!=0)){
-					step_time = sm_sync_ms(step_time,step_ms);
+					step_time = sm_sync_ms(lseq,step_time,step_ms);
 				}
 				if(responder == this_node_id){
 					twr_respond(lseq,initiator,responder,jresponse);
@@ -173,27 +173,30 @@ void command_ping(json &data,int sequence)
 	if(data.contains("count_ms")){
 		count_ms = data["count_ms"];
 	}
+	int lseq = 0;
 	uint8_t this_node_id = sm_get_sid();
 	sm_stop_rx();
 	if(target == this_node_id){
-		int64_t start = sm_rx_sync_ms(rx_delta_ms);
+		int64_t start = sm_rx_sync_ms(lseq,rx_delta_ms);
 		for(uint64_t i=0;i<count;i++){
 			if((i!=0) && (count_ms!=0)){
-				start = sm_sync_ms(start,count_ms);
+				start = sm_sync_ms(lseq,start,count_ms);
 			}
 			uwb_ping_rx(sequence,pinger,target,jresponse);
 			jresponse["uwb_cmd"] = "ping";
 			mesh_bcast_json(jresponse);
 			jresponse.clear();
 			k_sleep(K_MSEC(1));//to handle Tx by RF thread
+			lseq++;
 		}
 	}else if(pinger == this_node_id){
-		int64_t start = sm_rx_sync_ms(rx_delta_ms);
+		int64_t start = sm_rx_sync_ms(lseq,rx_delta_ms);
 		for(uint64_t i=0;i<count;i++){
 			if((i!=0) && (count_ms!=0)){
-				start = sm_sync_ms(start,count_ms);
+				start = sm_sync_ms(lseq,start,count_ms);
 			}
 			uwb_ping(sequence,pinger,target);
+			lseq++;
 		}
 	}
 	sm_start_rx();
