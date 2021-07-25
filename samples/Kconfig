@@ -23,6 +23,6 @@ endif # LOG
 
 config COMMIT_VAR
     string "the commit"
-	default "d35f523cd9"
+	default "a5da80757a"
 	#git rev-parse HEAD
     #option env="COMMIT_VAR"
