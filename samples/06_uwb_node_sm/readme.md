@@ -38,7 +38,9 @@ sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
 sm/1CF6567337562176{"rf_cmd":"target_ping","target":"CBC216DC164B1DE8"}
 sm/E8D81FEE52C283EB{"rf_cmd":"ping"}
 
+get:
 sm/CBC216DC164B1DE8{"rf_cmd":"sid"}
+set:
 sm/CBC216DC164B1DE8{"rf_cmd":"sid","sid":1}
 
 ```

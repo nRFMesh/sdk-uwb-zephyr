@@ -20,3 +20,9 @@ config LOG_DEFAULT_LEVEL
 	default 1 if UWB_SAMPLES_DEFAULTS
 
 endif # LOG
+
+config COMMIT_VAR
+    string "the commit"
+	default "d35f523cd9"
+	#git rev-parse HEAD
+    #option env="COMMIT_VAR"

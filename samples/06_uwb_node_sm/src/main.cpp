@@ -12,7 +12,7 @@
 #include <vector>
 
 std::string uid,uwb_cmd;
-json j_uwb_cmd,jconfig,jresponse;
+json j_uwb_cmd,jconfig,jresponse,j_sw;
 uint8_t source_uwb_cmd;
 bool do_reconfigure = false;
 const uint32_t g_mesh_alive_loop_sec = 20;
@@ -69,6 +69,12 @@ void app_gpio_init()
 	#endif
 }
 
+void report_sw_version()
+{
+	mesh_bcast_json(j_sw);
+	printf("sw>%s\n",j_sw.dump().c_str());
+}
+
 void rx_topic_json_handler(uint8_t source, std::string &topic, json &data)
 {
 	source_uwb_cmd = source;
@@ -84,6 +90,8 @@ void rx_topic_json_handler(uint8_t source, std::string &topic, json &data)
 		if(is_self(topic)){
 			if(data["sys_cmd"] == "reboot"){
 				sys_reboot(SYS_REBOOT_WARM);//param unused on ARM-M
+			}else if(data["sys_cmd"] == "sw_version"){
+				report_sw_version();
 			}
 		}
 	}
@@ -96,6 +104,11 @@ void mesh_start()
 
 	sm_start();//assigns uid, sid
 	sm_set_callback_rx_json(rx_topic_json_handler);
+
+	j_sw["date"] = std::string(__DATE__);
+	j_sw["time"] = std::string(__TIME__);
+	j_sw["commit"] = std::string(CONFIG_COMMIT_VAR);
+	report_sw_version();
 
 	printf("sm> started\n");
 }
