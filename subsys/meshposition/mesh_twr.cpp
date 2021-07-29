@@ -67,8 +67,8 @@ void twr_respond(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 	// - pulse3: 'final rx	: pending for receive final_3'
 	// - pulse4: 'computing : distance'
 	PIN_MP_SET;
-	uint32_t reg1 = mp_get_status();
-	LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
+	//uint32_t reg1 = mp_get_status();
+	//LOG_INF("responder> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_now(RX_TIMEOUT_1_MS);
 	msg_header_t rx_poll_msg;
 	if(mp_receive(msg_id_t::twr_1_poll,rx_poll_msg)){
@@ -146,8 +146,9 @@ void twr_intiate(uint8_t sequence,uint8_t source_initiator,uint8_t dest_responde
 	// - pulse2: 'request-receive : tx 1st till rx resp' ; 
 	// - pulse3: 'send_at : tx final delayed till sent'
 	PIN_MP_SET;
-	uint32_t reg1 = mp_get_status();
-	LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
+	k_busy_wait(100);//allow other side reception to start (+100 us offset over sync event)
+	//uint32_t reg1 = mp_get_status();
+	//LOG_INF("initiator> sequence(%u) starting ; statusreg = 0x%08x",sequence,reg1);
 	mp_rx_after_tx(POLL_TX_TO_RESP_RX_DLY_UUS,RX_TIMEOUT_1_MS);
 
 	msg_header_t twr_poll = {msg_id_t::twr_1_poll, sequence, source_initiator , dest_responder,0};
