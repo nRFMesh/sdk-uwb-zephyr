@@ -1,13 +1,10 @@
 # sdk-uwb-zephyr
 Zephyr sdk for uwb module DWM1001C based on nRF52832 and DW1000 Transceiver
-# Discourse forum
+# discussions
 get support, give feedback or simply chat to brainstorm about ideas on the forum
 
-[![discourse](./media/forum.png)](https://homesmartmesh.discourse.group/c/networks/ultrawideband/10)
+https://github.com/nRFMesh/sdk-uwb-zephyr/discussions
 
-
-
-[Home Smart Mesh Forum - Ultra Wide Band Category](https://homesmartmesh.discourse.group/c/networks/ultrawideband/10)
 
 # usage
 ```bash
